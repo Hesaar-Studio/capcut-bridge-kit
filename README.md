@@ -116,6 +116,21 @@ uv run capcut-bridge.py replay sample-cuts.json --name MyViralVideo --overwrite 
 
 ---
 
+### 🖥️ اجرای پنل وب پروژه
+
+پنل تصویری پروژه یک اپ React است و به‌صورت جدا از سرویس MCP اجرا می‌شود:
+
+```bash
+npm install
+npm run dev
+```
+
+بعد از اجرای موفق، آدرس محلی نمایش‌داده‌شده در ترمینال را در مرورگر باز کنید. برای اجرای مستقیم Bridge MCP نیز از این فرمان استفاده کنید:
+
+```bash
+python bridge_system/bridge_server.py --mcp
+```
+
 ## 🔌 اتصال MCP به دستیارها
 
 راهنمای تنظیم Claude Desktop و Cursor و ابزارهای واقعاً پیاده‌سازی‌شده در [bridge_system/README.md](bridge_system/README.md) آمده است. سرور MCP از `stdio` استفاده می‌کند و برای همین نیازی به بازکردن پورت HTTP ندارد. در حال حاضر MCP کنترل زنده‌ی تایم‌لاین باز را انجام نمی‌دهد.
