@@ -1,5 +1,6 @@
 @echo off
 setlocal
+cd /d "%~dp0"
 title CapCut Bridge Kit - Full Windows Installer
 color 0A
 
@@ -17,9 +18,16 @@ if errorlevel 1 (
 
 node --version >nul 2>&1
 if errorlevel 1 (
-  echo [ERROR] Node.js 18+ is required and was not found in PATH.
+  echo [INFO] Node.js was not found. Attempting installation with winget...
+  winget install --id OpenJS.NodeJS.LTS --exact --accept-source-agreements --accept-package-agreements
+  if errorlevel 1 (
+    echo [ERROR] Node.js installation failed. Install Node.js LTS, reopen this file, and retry.
+    pause
+    exit /b 1
+  )
+  echo [INFO] Node.js installed. Close and reopen this installer so PATH refreshes.
   pause
-  exit /b 1
+  exit /b 0
 )
 
 npm --version >nul 2>&1
@@ -42,6 +50,10 @@ echo.
 echo Start the panel with: npm run dev
 echo Start MCP directly with: python bridge_system\bridge_server.py --mcp
 echo.
+choice /M "Start the web panel now"
+if errorlevel 2 goto :done
+call npm run dev
+:done
 pause
 exit /b 0
 
