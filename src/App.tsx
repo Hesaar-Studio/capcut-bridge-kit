@@ -19,9 +19,10 @@ import {
 } from './data/bridgeSource';
 import { Platform } from './types';
 import { EditingPrompt } from './data/editingPrompts';
+import { Dashboard } from './components/Dashboard';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<string>('ai_hub');
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [platform, setPlatform] = useState<Platform>('win');
 
   const handleDownloadPy = () => {
@@ -72,6 +73,7 @@ export default function App() {
             }}
           />
         )}
+        {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab} />}
         {activeTab === 'bridge' && (
           <BridgeStudioPanel
             platform={platform}
