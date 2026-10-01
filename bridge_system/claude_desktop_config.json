@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "hs-art-tech-bridge": {
+      "command": "python",
+      "args": [
+        "C:\\capcut-bridge-kit new updat\\bridge_system\\bridge_server.py",
+        "--mcp"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}

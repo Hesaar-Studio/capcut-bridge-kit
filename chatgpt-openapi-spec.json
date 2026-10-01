@@ -1,0 +1,130 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CapCut Bridge Automation API",
+    "description": "API for ChatGPT to control and automate CapCut Desktop video editing.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000"
+    }
+  ],
+  "paths": {
+    "/drafts": {
+      "get": {
+        "summary": "List all CapCut drafts",
+        "operationId": "listDrafts",
+        "responses": {
+          "200": {
+            "description": "List of drafts"
+          }
+        }
+      }
+    },
+    "/draft/replay": {
+      "post": {
+        "summary": "Rebuild video project from cuts",
+        "operationId": "replayDraft",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "draft_name": { "type": "string" },
+                  "cuts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "source_path": { "type": "string" },
+                        "start": { "type": "number" },
+                        "duration": { "type": "number" }
+                      },
+                      "required": ["source_path", "start", "duration"]
+                    }
+                  }
+                },
+                "required": ["draft_name", "cuts"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Draft recreated successfully" }
+        }
+      }
+    },
+    "/draft/add_text": {
+      "post": {
+        "summary": "Add text caption or hook card",
+        "operationId": "addTextCaption",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "draft_name": { "type": "string" },
+                  "text": { "type": "string" },
+                  "at": { "type": "number" },
+                  "duration": { "type": "number" }
+                },
+                "required": ["draft_name", "text", "at"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Text added" }
+        }
+      }
+    },
+    "/live/split": {
+      "post": {
+        "summary": "Split video at playhead or timestamp",
+        "operationId": "splitClip",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "seconds": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Split cut applied" }
+        }
+      }
+    },
+    "/live/export": {
+      "post": {
+        "summary": "Export edited video and clear modal",
+        "operationId": "exportVideo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "output_dir": { "type": "string" },
+                  "timeout": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Video export finished" }
+        }
+      }
+    }
+  }
+}

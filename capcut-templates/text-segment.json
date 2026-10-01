@@ -1,0 +1,21 @@
+{
+  "id": "TEXT_SEG_TEMPLATE_ID",
+  "material_id": "TEXT_MAT_TEMPLATE_ID",
+  "render_index": 1000,
+  "target_timerange": {
+    "start": 0,
+    "duration": 3000000
+  },
+  "source_timerange": {
+    "start": 0,
+    "duration": 3000000
+  },
+  "speed": 1.0,
+  "volume": 1.0,
+  "clip": {
+    "scale": { "x": 1.0, "y": 1.0 },
+    "transform": { "x": 0.0, "y": -0.32 },
+    "rotation": 0.0
+  },
+  "extra_material_refs": []
+}

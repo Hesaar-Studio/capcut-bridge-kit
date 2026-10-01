@@ -1,0 +1,39 @@
+{
+  "draft_name": "Product_Teaser_Final",
+  "resolution": {
+    "width": 1080,
+    "height": 1920,
+    "ratio": "9:16"
+  },
+  "fps": 30.0,
+  "cuts": [
+    {
+      "source_path": "/Users/username/Movies/Takes/intro_hook.mov",
+      "start": 0.0,
+      "duration": 2.4,
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "source_path": "/Users/username/Movies/Takes/demo_problem.mov",
+      "start": 1.2,
+      "duration": 3.6,
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "source_path": "/Users/username/Movies/Takes/solution_reveal.mov",
+      "start": 0.5,
+      "duration": 4.1,
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "source_path": "/Users/username/Movies/Takes/call_to_action.mov",
+      "start": 0.0,
+      "duration": 2.8,
+      "width": 1080,
+      "height": 1920
+    }
+  ]
+}

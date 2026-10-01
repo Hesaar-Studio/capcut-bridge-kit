@@ -1,0 +1,44 @@
+{
+  "elements": [
+    {
+      "type": "text",
+      "text": "THIS CHANGES EVERYTHING 🔥",
+      "start": 0.2,
+      "duration": 2.2,
+      "style": "tiktok-raw",
+      "color": "#ffffff",
+      "font_size": 34.0,
+      "position": { "x": 0.0, "y": -0.32 }
+    },
+    {
+      "type": "text",
+      "text": "Stop editing manually in 2026",
+      "start": 2.5,
+      "duration": 3.2,
+      "style": "captions",
+      "color": "#ffd700",
+      "font_size": 26.0,
+      "position": { "x": 0.0, "y": -0.35 }
+    },
+    {
+      "type": "text",
+      "text": "Full CapCut Bridge API Active",
+      "start": 6.0,
+      "duration": 3.8,
+      "style": "tiktok-raw",
+      "color": "#00f0ff",
+      "font_size": 30.0,
+      "position": { "x": 0.0, "y": -0.32 }
+    },
+    {
+      "type": "text",
+      "text": "Link in bio to clone kit 🚀",
+      "start": 10.0,
+      "duration": 2.8,
+      "style": "tiktok-raw",
+      "color": "#ffffff",
+      "font_size": 32.0,
+      "position": { "x": 0.0, "y": -0.32 }
+    }
+  ]
+}

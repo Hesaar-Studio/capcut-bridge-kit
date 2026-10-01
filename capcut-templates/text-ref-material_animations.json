@@ -1,0 +1,18 @@
+{
+  "id": "ANIM_MAT_TEMPLATE_ID",
+  "type": "material_animation",
+  "animations": [
+    {
+      "id": "ANIM_IN_POP",
+      "category_id": "text_in",
+      "category_name": "In",
+      "duration": 300000,
+      "material_type": "text",
+      "name": "Pop",
+      "path": "",
+      "request_id": "",
+      "resource_id": "text_anim_pop_in",
+      "start": 0
+    }
+  ]
+}

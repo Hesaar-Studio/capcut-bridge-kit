@@ -1,0 +1,6 @@
+{
+  "name": "CapCut Bridge Kit",
+  "description": "macOS automation suite and bridge for CapCut Desktop: File-lane JSON draft editing, Live-lane macOS Accessibility tree driving, command generator, and visual timeline inspector.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

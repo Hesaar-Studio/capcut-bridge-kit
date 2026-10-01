@@ -1,0 +1,38 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "fields": {
+        "uid": { "type": "string", "required": true },
+        "email": { "type": "string", "required": true },
+        "displayName": { "type": "string", "required": false },
+        "photoURL": { "type": "string", "required": false },
+        "createdAt": { "type": "timestamp", "required": true },
+        "lastLogin": { "type": "timestamp", "required": true },
+        "preferredNLE": { "type": "string", "required": false }
+      },
+      "rules": {
+        "read": "request.auth != null && request.auth.uid == resource.data.uid",
+        "write": "request.auth != null && request.auth.uid == request.resource.data.uid"
+      }
+    },
+    "UserCreation": {
+      "collection": "users/{userId}/creations",
+      "fields": {
+        "userId": { "type": "string", "required": true },
+        "type": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "prompt": { "type": "string", "required": true },
+        "model": { "type": "string", "required": true },
+        "resultUrl": { "type": "string", "required": false },
+        "textContent": { "type": "string", "required": false },
+        "metadata": { "type": "map", "required": false },
+        "createdAt": { "type": "timestamp", "required": true }
+      },
+      "rules": {
+        "read": "request.auth != null && request.auth.uid == userId",
+        "write": "request.auth != null && request.auth.uid == userId"
+      }
+    }
+  }
+}

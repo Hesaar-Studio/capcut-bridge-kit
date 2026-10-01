@@ -1,0 +1,59 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "replay_draft",
+      "description": "Rebuilds a CapCut video draft from a list of video cuts and durations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "draft_name": { "type": "string", "description": "The CapCut project name" },
+          "cuts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_path": { "type": "string", "description": "Path to footage under ~/Movies" },
+                "start": { "type": "number", "description": "Cut start in seconds" },
+                "duration": { "type": "number", "description": "Duration in seconds" }
+              },
+              "required": ["source_path", "start", "duration"]
+            }
+          }
+        },
+        "required": ["draft_name", "cuts"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "add_text_caption",
+      "description": "Adds a styled caption, subtitle, or hook text to a CapCut timeline.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "draft_name": { "type": "string" },
+          "text": { "type": "string", "description": "Caption text" },
+          "at": { "type": "number", "description": "Start timestamp in seconds" },
+          "duration": { "type": "number", "description": "Duration in seconds" }
+        },
+        "required": ["draft_name", "text", "at"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "export_video",
+      "description": "Drives CapCut export dialog, encodes video, and clears post-export share modal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "output_dir": { "type": "string", "description": "Destination directory" },
+          "timeout": { "type": "number", "description": "Max timeout in seconds" }
+        }
+      }
+    }
+  }
+]

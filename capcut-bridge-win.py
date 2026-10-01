@@ -285,7 +285,7 @@ def cmd_replay(args):
             "material_animations": [],
             "canvases": [],
             "speeds": [],
-            }
+        }
 
         main_track_segments = []
         timeline_cursor_us = 0

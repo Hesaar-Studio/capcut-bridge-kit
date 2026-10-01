@@ -1,0 +1,19 @@
+{
+  "id": "TEXT_MAT_TEMPLATE_ID",
+  "type": "text",
+  "content": "<font color=\"#ffffff\">Default Caption</font>",
+  "font_size": 28.0,
+  "alignment": 1,
+  "has_shadow": true,
+  "shadow_alpha": 0.8,
+  "shadow_color": "#000000",
+  "shadow_distance": 5.0,
+  "shadow_point": { "x": 0.0, "y": -1.0 },
+  "shadow_smooth": 0.45,
+  "border_width": 0.0,
+  "border_color": "#000000",
+  "style_name": "tiktok_raw",
+  "typesetting": 0,
+  "letter_spacing": 0.0,
+  "line_spacing": 0.0
+}

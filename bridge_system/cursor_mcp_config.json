@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "hs-art-tech-bridge": {
+      "command": "python",
+      "args": [
+        "${workspaceFolder}/bridge_system/bridge_server.py",
+        "--mcp"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}
