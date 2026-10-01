@@ -1,1904 +1,1314 @@
+PHASE 4B — AI EDITING CONTRACT
+CAPCUT BRIDGE KIT
 
+Repository:
+Hesaar-Studio/capcut-bridge-kit
 
+============================================================
+0. CURRENT PROJECT STATE — ALREADY IMPLEMENTED
+============================================================
 
-🎬 CapCut Bridge Kit
-AI → MCP → CapCut Desktop Bridge for Windows & macOS
-<p align="center"> <strong>Connect AI-assisted editing workflows to CapCut Desktop through a local, safety-conscious bridge.</strong> </p>
+IMPORTANT:
 
-<p align="center"> <img src="./assets/capcut-bridge-control-panel.png" alt="CapCut Bridge Kit Control Panel" width="1200" /> </p>
+This repository is NOT an empty project.
 
-<p align="center"> <a href="https://github.com/Hesaar-Studio/capcut-bridge-kit"> <img src="https://img.shields.io/badge/CapCut-Bridge%20Kit-00E5B9?style=for-the-badge&logo=capcut&logoColor=black" alt="CapCut Bridge Kit" /> </a> <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+" /> <img src="https://img.shields.io/badge/Windows-%26-macOS-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows and macOS" /> <img src="https://img.shields.io/badge/MCP-Local%20stdio-8A2BE2?style=for-the-badge" alt="MCP" /> <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License" /> <img src="https://img.shields.io/badge/Status-In%20Development-orange?style=for-the-badge" alt="In Development" /> </p>
+Several phases have ALREADY been implemented and tested.
 
-<p align="center"> 🇬🇧 <a href="#-english">English</a> &nbsp;•&nbsp; 🇮🇷 <a href="#-فارسی">فارسی</a> &nbsp;•&nbsp; 🇨🇳 <a href="#-中文">中文</a> </p>
+DO NOT rebuild them.
 
-🇬🇧 English
-📖 Overview
-CapCut Bridge Kit is an open-source project for connecting AI-assisted editing workflows and local developer tools to CapCut Desktop on Windows and macOS.
+DO NOT replace them.
 
-The project provides:
+DO NOT duplicate their functionality.
 
-Local Python bridge tools
+DO NOT rewrite existing architecture merely to implement Phase 4B.
 
-MCP integration
+Phase 4B must build ON TOP of the existing implementation.
 
-Project-file operations
+The current project direction is:
 
-Windows desktop automation
-
-macOS desktop automation
-
-Local REST services
-
-CLI workflows
-
-Editing prompt resources
-
-Experimental timeline/project manipulation
-
-The architecture intentionally separates file-based operations from live desktop automation.
-
-⚠️ CapCut does not provide a stable, official public API for all of the operations this project explores. Some functionality therefore depends on CapCut's local project structure, application version, and desktop behavior.
-
-Always back up important CapCut projects before allowing automated file modifications.
-
-🎯 Project Goal
-The goal is to create a practical bridge between:
-
-AI tools
-   ↓
-MCP / Local Automation
-   ↓
+AI
+  ↓
 CapCut Bridge Kit
-   ↓
+  ↓
 CapCut Desktop
-   ↓
-Video Editing Workflow
-The project is intended to make AI-assisted editing workflows more reproducible, scriptable, inspectable, and easier to extend.
 
-It is not intended to claim that CapCut has an official public automation API.
+The Bridge is an execution/integration layer.
 
-✨ Key Features
-🤖 Local MCP Integration
-The project includes local MCP functionality designed to expose implemented bridge capabilities to compatible AI/developer tools.
+It is NOT an autonomous AI video editor.
 
-Current capabilities may include:
+============================================================
+1. PROJECT PURPOSE
+============================================================
 
-Project discovery
+CapCut Bridge Kit exists to connect external AI systems to
+CapCut Desktop.
 
-Local status inspection
+Potential AI clients include:
 
-Project creation workflows
+- ChatGPT
+- Claude
+- Gravity / Antigravity
+- Gemini
+- future AI systems
+- other MCP/API-compatible agents
 
-Text insertion
+The external AI is the:
 
-File-based editing operations
+DIRECTOR / DECISION MAKER
 
-Local bridge communication
+The Bridge is the:
 
-MCP currently does not provide unrestricted control over every operation in an already-open CapCut timeline.
+EXECUTION + INTEGRATION LAYER
 
-🪟 Windows Automation
-Windows support includes local automation through:
+CapCut Desktop is the:
 
-pyautogui
+EDITING RUNTIME
 
-Win32 APIs
+The external AI should:
 
-Local REST bridge
+- understand the user's natural-language request
+- reason about the task
+- inspect the available project information
+- decide what should happen
+- decide which tools to call
+- create editing plans
+- decide whether confirmation is needed
+- request execution
 
-CapCut-specific Python scripts
+The Bridge should:
 
-Desktop keyboard automation
+- expose capabilities
+- inspect projects
+- expose structured analysis
+- validate structured commands
+- route commands
+- execute supported operations
+- protect project files
+- create backups
+- validate changes
+- verify results
+- return structured execution receipts
 
-Example components:
+The Bridge must NOT become another autonomous AI.
 
-capcut-bridge-win.py
-capcut-plugin-win.py
-install-plugin-win.bat
-The Windows bridge is designed to remain local.
+============================================================
+2. ALREADY IMPLEMENTED — PHASE 2
+============================================================
 
-The controller binds to:
+Phase 2 — Draft Engine has already been implemented.
 
-127.0.0.1
-rather than exposing the service publicly.
+The following package already exists:
 
-🍏 macOS Automation
-The macOS bridge uses Python tooling with:
+draft_engine/
 
-uv
+with:
 
-PyObjC
+draft_engine/__init__.py
+draft_engine/models.py
+draft_engine/validator.py
+draft_engine/backup.py
+draft_engine/reader.py
+draft_engine/writer.py
 
-Quartz
+Tests already exist:
 
-Native macOS desktop interaction
+tests/test_draft_engine.py
 
-Example:
+Phase 2 implementation includes:
 
-uv run capcut-bridge.py ls
-🏗️ Architecture
-┌──────────────────────────────────────────────┐
-│              AI / Developer Layer            │
-│                                              │
-│ Gemini • Claude • Cursor • Other AI Tools    │
-└───────────────────────┬──────────────────────┘
-                        │
-                        ▼
-┌──────────────────────────────────────────────┐
-│             CapCut Bridge Engine             │
-│                                              │
-│   ┌────────────────┐   ┌─────────────────┐  │
-│   │   FILE LANE    │   │    LIVE LANE    │  │
-│   │                │   │                 │  │
-│   │ Project files  │   │ pyautogui       │  │
-│   │ draft_content  │   │ PyObjC          │  │
-│   │ assets         │   │ keyboard input  │  │
-│   │ replay         │   │ desktop actions │  │
-│   └────────────────┘   └─────────────────┘  │
-└───────────────────────┬──────────────────────┘
-                        │
-                        ▼
-┌──────────────────────────────────────────────┐
-│              CapCut Desktop                  │
-│           Windows / macOS                    │
-└──────────────────────────────────────────────┘
-🛣️ Two-Lane Architecture
-📁 File Lane
-The File Lane works with local project data.
+- TimeRange
+- VideoMaterial
+- AudioMaterial
+- TextMaterial
+- Segment
+- Track
+- DraftProject
+- serialization/deserialization
+- project validation
+- backup handling
+- staged writes
+- atomic replacement
+- overwrite protection
+- cache cleanup
+- null timerange repair
+- safe project writing
 
-Conceptually:
+The Draft Engine uses standard Python functionality and existing
+project structures.
 
-CapCut Project
-      ↓
-Backup / Staging
-      ↓
-Project Data
-      ↓
-Modify / Generate
-      ↓
-Validate
-      ↓
-CapCut
-Typical operations may include:
+IMPORTANT:
 
-Creating a project from structured cut data
+Do NOT rewrite Draft Engine.
 
-Adding text
+Do NOT replace its models.
 
-Working with project assets
+Do NOT create a second project model system.
 
-Preparing project data
+Reuse it from Phase 4B where appropriate.
 
-Replaying an edit plan
+============================================================
+3. PHASE 2 SAFETY MODEL
+============================================================
 
-The File Lane is the more deterministic side of the system, but it is still dependent on CapCut's project structure.
+The existing Draft Engine already follows a safety-oriented model.
 
-🖥️ Live Lane
-The Live Lane communicates with the desktop application using local keyboard or accessibility-oriented automation.
+The important behavior includes:
 
-Examples include:
+- staging before write
+- validation
+- backup before destructive changes
+- atomic rename/replacement
+- explicit overwrite confirmation
+- cleanup of temporary/cache artifacts
+- project integrity validation
 
-Split        → Ctrl+B / Cmd+B
-Play/Pause   → Space
-Export       → Ctrl+E / Cmd+E
-Dismiss      → Esc
-Live actions are inherently more dependent on:
+Phase 4B must preserve this safety model.
 
-The active window
+A future mutating AI command MUST NOT bypass these protections.
 
-CapCut version
+============================================================
+4. ALREADY IMPLEMENTED — PHASE 3A
+============================================================
 
-Window state
+Phase 3A — Smart Editing Read-Only has already been implemented.
 
-Focus
+The following package already exists:
 
-Desktop environment
+smart_editing/
 
-Timing
+with:
 
-Therefore, a live action should not automatically be treated as successfully completed merely because a keyboard shortcut was sent.
+smart_editing/__init__.py
+smart_editing/models.py
+smart_editing/pause_detection.py
+smart_editing/duplicate_detection.py
+smart_editing/subtitle_ops.py
+smart_editing/edit_planner.py
 
-🔐 Safety & Verification
-Safety is a core design principle of the project.
+Tests already exist:
 
-Project Replacement
-The replay workflow does not silently replace an existing project.
+tests/test_smart_editing.py
 
-A replacement requires explicit confirmation.
+Phase 3A contains:
 
-Example:
+- SubtitleItem
+- SubtitleGap
+- DuplicateCategory
+- DuplicateCandidate
+- EditAction
+- PlanItem
+- EditPlan
 
-uv run capcut-bridge.py replay sample-cuts.json \
-  --name MyViralVideo \
-  --overwrite \
-  --confirm-name MyViralVideo
-The intended workflow is:
+The duplicate categories include:
 
-Request
-  ↓
-Create staging project
-  ↓
-Validate
-  ↓
-Backup existing project
-  ↓
-Explicit name confirmation
-  ↓
-Replace
-This is designed to reduce accidental destruction of existing projects.
+- EXACT_DUPLICATE
+- HIGH_SIMILARITY
+- POSSIBLE_DUPLICATE
 
-🧪 Verification Principle
-The bridge distinguishes between:
+Existing analysis includes:
 
-Command Sent
-and:
+- subtitle/timeline gap detection
+- duplicate candidate detection
+- subtitle extraction
+- subtitle merging
+- subtitle splitting
+- subtitle timing adjustment
+- EditPlan generation
+- EditPlan validation
 
-Action Verified
+============================================================
+5. IMPORTANT LIMITATION OF PHASE 3A
+============================================================
+
+Phase 3A is READ-ONLY ANALYSIS.
+
+It is NOT an autonomous AI editor.
+
+This distinction is fundamental.
+
+The current Smart Editing layer does NOT decide:
+
+- whether a clip should actually be removed
+- whether a pause is creatively undesirable
+- which duplicate should be selected
+- how the final video should feel
+- what editing style the user wants
+
+It provides structured evidence to an external AI.
+
 For example:
 
-Export shortcut sent
-        ≠
-Export completed
-Likewise:
-
-Split shortcut sent
-        ≠
-Clip successfully split
-Where reliable readback is available, the system should verify the resulting project state.
-
-Where verification is unavailable, the response should explicitly state that completion was not verified.
-
-🔌 MCP
-The project uses a local MCP architecture.
-
-Conceptually:
-
-AI Client
-   │
-   │ MCP / stdio
-   ▼
-CapCut Bridge
-   │
-   ├── File operations
-   ├── Project operations
-   ├── Local automation
-   └── Desktop bridge
-The MCP layer is intended to keep AI interaction structured rather than exposing arbitrary shell execution.
-
-Current limitation
-MCP does not currently represent unrestricted live control over every element of an open CapCut timeline.
-
-📡 Local REST API
-The Windows bridge exposes a local REST service.
-
-Default address:
-
-http://127.0.0.1:8765
-The service is intentionally local.
-
-Example endpoints
-Method	Endpoint	Purpose
-GET	/api/v1/status	Local CapCut/process status
-GET	/api/v1/drafts	List local projects
-POST	/api/v1/split	Send split action
-POST	/api/v1/export	Send export action
-POST	/api/v1/play	Play / pause action
-Verification note
-Some desktop operations only confirm that an action was dispatched.
-
-They do not necessarily prove that CapCut completed the action.
-
-🛡️ Local Security Boundary
-The bridge is intended for local use.
-
-The default architecture uses:
-
-127.0.0.1
-and restricts browser origins to allowed local origins.
-
-Do not expose the local controller directly to the public Internet.
-
-Native local clients may not have full application-level authentication, so network exposure is not an intended deployment model.
-
-🚀 Quick Start
-Windows
-Install dependencies
-pip install pyautogui pillow flask requests pywin32
-Start the local bridge
-python capcut-plugin-win.py
-List projects
-python capcut-bridge-win.py ls
-macOS
-Install uv if required:
-
-curl -LsSf https://astral.sh/uv/install.sh | sh
-List CapCut projects:
-
-uv run capcut-bridge.py ls
-Replay a cut list:
-
-uv run capcut-bridge.py replay sample-cuts.json --name MyViralVideo
-💻 CLI Examples
-1. List Projects
-Windows
-python capcut-bridge-win.py ls
-macOS
-uv run capcut-bridge.py ls
-2. Replay EDL Cuts
-python capcut-bridge-win.py replay sample-cuts.json \
-  --name "Podcast_Highlight_01"
-For an explicit replacement:
-
-python capcut-bridge-win.py replay sample-cuts.json `
-  --name "Podcast_Highlight_01" `
-  --overwrite `
-  --confirm-name "Podcast_Highlight_01"
-3. Add Text
-python capcut-bridge-win.py add-text \
-  "Podcast_Highlight_01" \
-  "Your text here" \
-  --at 1.2 \
-  --dur 2.0
-4. Add Overlay
-python capcut-bridge-win.py add-overlay \
-  "Podcast_Highlight_01" \
-  broll.mp4 \
-  --at 2.0 \
-  --dur 3.5 \
-  --layer 2
-5. Transform Overlay
-python capcut-bridge-win.py transform \
-  "Podcast_Highlight_01" \
-  --track overlay \
-  --index 1 \
-  --scale 1.15 \
-  --y -0.1
-🎨 Editing Prompt Library
-The repository also contains resources for AI-assisted editing workflows.
-
-Example topics include:
-
-Professional lighting
-
-Rembrandt lighting
-
-Cyberpunk / neon looks
-
-Golden-hour aesthetics
-
-Speed-ramping
-
-J-Cuts
-
-Cinematic editing
-
-Audio engineering
-
-Safe zones
-
-Viewer retention
-
-Social-media editing
-
-These resources are intended as editing guidance and prompt material rather than guarantees of automatic execution.
-
-📚 Editing Workflow
-A typical AI-assisted workflow can look like:
-
-1. Import footage
-        ↓
-2. Analyze content
-        ↓
-3. Generate transcript / edit decisions
-        ↓
-4. Build structured cut list
-        ↓
-5. Review edit decisions
-        ↓
-6. Replay / assemble project
-        ↓
-7. Apply text / overlays / transforms
-        ↓
-8. Verify project state
-        ↓
-9. Open in CapCut
-        ↓
-10. Human review
-        ↓
-11. Export
-The project intentionally keeps human review in the workflow.
-
-📂 Repository Structure
-capcut-bridge-kit/
-│
-├── .gitignore
-├── LICENSE
-├── README.md
-│
-├── install-plugin-win.bat
-│
-├── capcut-bridge-win.py
-├── capcut-plugin-win.py
-├── capcut-bridge.py
-│
-├── INPUT-CONTRACT.md
-├── sample-cuts.json
-├── sample-graphics-plan.json
-│
-├── package.json
-├── vite.config.ts
-│
-└── src/
-    ├── components/
-    │   ├── CapCutStudio.tsx
-    │   ├── PromptLibrary.tsx
-    │   ├── EditingMastery.tsx
-    │   ├── WindowsPluginGuide.tsx
-    │   ├── CommandBuilder.tsx
-    │   └── TimelineVisualizer.tsx
-    │
-    └── data/
-        ├── editingPrompts.ts
-        └── bridgeSource.ts
-🧩 Project Status
-Area	Status
-Local project tooling	🟢 Implemented
-Windows bridge	🟢 Implemented / evolving
-macOS bridge	🟢 Implemented / evolving
-Local REST service	🟢 Implemented
-MCP integration	🟢 Implemented
-Project-file workflows	🧪 Experimental
-Live desktop automation	🧪 Experimental
-Full open-timeline control	🚧 Not yet provided
-AI editing orchestration	🚧 In development
-Production-grade verification for every action	🚧 In development
-Status labels describe the current project direction and should be updated as capabilities are tested and verified.
+Bridge analysis may report:
 
-🗺️ Roadmap
-Phase 1 — Bridge Foundation
-Local Python bridge
+"Subtitle gap = 2.5 seconds"
 
-Windows automation foundation
+The external AI decides whether that gap should be removed.
 
-macOS automation foundation
+The Bridge does NOT independently decide that.
 
-Local REST service
+============================================================
+6. PHASE 3A PAUSE DETECTION LIMITATION
+============================================================
 
-MCP foundation
+Existing pause detection is based on subtitle/timeline gaps.
 
-Project replay workflow
+It does NOT claim to perform acoustic silence detection.
 
-Phase 2 — Reliability
-Safer project replacement
+Do NOT change the meaning of this capability.
 
-Staging before replacement
+Do NOT describe it as:
 
-Backup workflow
+"audio silence detection"
 
-Local-only network boundary
+unless an actual audio-analysis implementation exists.
 
-Action/readback distinction
+Current conceptual meaning:
 
-Expanded automated verification
+subtitle/timeline gap analysis.
 
-Broader live CapCut testing
+============================================================
+7. PHASE 3A DUPLICATE DETECTION LIMITATION
+============================================================
 
-Phase 3 — AI Editing
-AI edit-plan generation
+Existing duplicate detection is text-based.
 
-Structured edit orchestration
+It uses text similarity analysis.
 
-Transcript-driven cuts
+It does NOT claim:
 
-Automated subtitle workflows
+- visual duplicate detection
+- acoustic duplicate detection
+- semantic video understanding
+- speaker recognition
+- facial recognition
 
-B-roll planning
+Do not advertise capabilities that do not exist.
 
-Audio cleanup planning
+============================================================
+8. EXISTING SMART EDITING PARAMETERS
+============================================================
 
-Style-aware editing prompts
+Existing Phase 3A behavior includes approximately:
 
-Phase 4 — Production Workflow
-Job lifecycle
+Gap analysis:
 
-Queue management
+default minimum gap:
 
-Provider registry
+1.0 second
 
-Reliable export verification
+Duplicate detection:
 
-Batch editing workflows
+sliding window:
 
-Production-grade desktop lifecycle management
+60 seconds
 
-Phase 5 — Ecosystem
-Additional editing applications
+Similarity thresholds include:
 
-More MCP integrations
+exact:
+1.0
 
-Community plugins
+high similarity:
+> 0.85
 
-Documentation expansion
+possible similarity:
+> 0.70
 
-Community-maintained adapters
+Do NOT arbitrarily change these values in Phase 4B.
 
-🤝 Contributing
-Contributions are welcome from:
+============================================================
+9. PHASE 3A DESIGN DECISION
+============================================================
 
-Software developers
+The current architecture deliberately separates:
 
-AI engineers
+ANALYSIS
 
-Video editors
+from:
 
-Motion designers
+DECISION
 
-Automation engineers
+from:
 
-MCP developers
+EXECUTION
 
-CapCut workflow researchers
+The correct model is:
 
-Contribution Workflow
-git clone https://github.com/Hesaar-Studio/capcut-bridge-kit.git
-
-cd capcut-bridge-kit
-
-git checkout -b feature/your-feature
-Make your changes, test them, then:
-
-git add .
-git commit -m "Add your feature"
-git push origin feature/your-feature
-Open a Pull Request on GitHub.
-
-🧪 Testing Philosophy
-Before considering an automation feature reliable, test:
-
-Does the command execute?
-
-Does the expected project change occur?
-
-Can the change be read back?
-
-Does the behavior survive the target CapCut version?
-
-Does failure produce an honest error?
-
-Can the operation be safely repeated?
-
-Can the original project be recovered?
-
-A successful process exit is not automatically proof of a successful edit.
-
-⚠️ Known Limitations
-CapCut Desktop behavior can vary between versions.
-
-Project-file automation may depend on:
-
-Internal project structure
-
-File locations
-
-Application version
-
-Media paths
-
-Project state
-
-Operating system
-
-Window focus
-
-Desktop automation may depend on:
-
-Active window
-
-Keyboard focus
-
-Screen state
-
-Window dimensions
-
-Timing
-
-Permissions
-
-Therefore:
-
-Always test automation on a copy of an important project first.
-
-🔒 Security
-Please do not expose the local bridge to the public Internet.
-
-If you discover a security issue, please report it privately to the project maintainers before publishing a public exploit.
-
-Do not include:
-
-API keys
-
-Authentication tokens
-
-Personal credentials
-
-Private project files
-
-Private media
-
-Machine-specific secrets
-
-in issues or pull requests.
-
-📜 License
-This project is released under the MIT License.
-
-See:
-
-LICENSE
-for the complete license text.
-
-🏢 Maintainer
-Hesaar Studio
-
-GitHub:
-
-https://github.com/Hesaar-Studio
-
-Repository:
-
-https://github.com/Hesaar-Studio/capcut-bridge-kit
-
-⚖️ Disclaimer
-CapCut is a product and trademark of ByteDance.
-
-This project is an independent open-source project and is not presented as an official ByteDance product unless explicitly stated otherwise.
-
-CapCut versions, project formats, desktop interfaces, and behavior may change.
-
-❤️ Open Source
-CapCut Bridge Kit is intended to grow as a community-driven bridge between:
-
-AI
-+
-MCP
-+
-Automation
-+
-Video Editing
-The project welcomes experimentation, testing, documentation, bug reports, and responsible contributions.
-
-🇮🇷 فارسی
-📖 معرفی
-CapCut Bridge Kit یک پروژه متن‌باز برای ایجاد ارتباط میان گردش‌کارهای تدوین با کمک هوش مصنوعی، ابزارهای توسعه‌دهندگان و CapCut Desktop در ویندوز و macOS است.
-
-این پروژه مجموعه‌ای از ابزارهای محلی Python، اتصال MCP، عملیات روی فایل پروژه، اتوماسیون دسکتاپ، REST محلی، دستورات CLI و منابع آموزشی تدوین را ارائه می‌کند.
-
-معماری پروژه دو مسیر اصلی دارد:
-
-هوش مصنوعی
-   ↓
-MCP / اتوماسیون محلی
-   ↓
-CapCut Bridge Kit
-   ↓
-CapCut Desktop
-   ↓
-گردش‌کار تدوین ویدیو
-⚠️ CapCut برای همه عملیات مورد بررسی این پروژه یک API عمومی و پایدار ارائه نمی‌کند. بنابراین بخشی از قابلیت‌ها به ساختار فایل پروژه، نسخه CapCut و رفتار برنامه دسکتاپ وابسته است.
-
-پیش از اجرای عملیات خودکار روی پروژه‌های مهم، حتماً از آن‌ها نسخه پشتیبان تهیه کنید.
-
-🎯 هدف پروژه
-هدف اصلی CapCut Bridge Kit ایجاد یک پل عملی میان ابزارهای هوش مصنوعی و CapCut Desktop است تا فرایندهای تدوین بتوانند:
-
-ساختاریافته‌تر باشند
-
-قابل اسکریپت‌نویسی باشند
-
-قابل بررسی باشند
-
-قابل تکرار باشند
-
-از طریق MCP در اختیار ابزارهای هوش مصنوعی قرار بگیرند
-
-به‌مرور قابل توسعه باشند
-
-این پروژه ادعا نمی‌کند که CapCut یک API رسمی عمومی برای تمام عملیات اتوماسیون دارد.
-
-✨ قابلیت‌های اصلی
-🤖 اتصال محلی MCP
-پروژه دارای معماری MCP محلی است که قابلیت‌های پیاده‌سازی‌شده Bridge را در اختیار ابزارهای سازگار قرار می‌دهد.
-
-قابلیت‌های فعلی می‌توانند شامل موارد زیر باشند:
-
-شناسایی پروژه‌ها
-
-بررسی وضعیت محلی
-
-ایجاد پروژه
-
-افزودن متن
-
-عملیات مبتنی بر فایل
-
-ارتباط با Bridge محلی
-
-در حال حاضر MCP کنترل نامحدود همه اجزای یک Timeline باز CapCut را ارائه نمی‌کند.
-
-🪟 پشتیبانی Windows
-نسخه Windows از ابزارهای محلی زیر استفاده می‌کند:
-
-pyautogui
-
-Win32 API
-
-REST Bridge
-
-اسکریپت‌های Python
-
-اتوماسیون صفحه‌کلید
-
-نمونه فایل‌ها:
+User
+ ↓
+External AI
+ ↓
+Bridge analysis tools
+ ↓
+Analysis result
+ ↓
+External AI makes decision
+ ↓
+EditPlan
+ ↓
+Bridge validates plan
+ ↓
+Bridge executes only supported operations
+ ↓
+CapCut
+
+Do NOT collapse these layers.
+
+============================================================
+10. ALREADY EXISTING BRIDGE LANES
+============================================================
+
+The project already contains Bridge functionality including:
+
+Windows File Lane
+
+and
+
+Live Lane
+
+The Windows bridge implementation includes functionality such as:
+
+- CapCut binary discovery
+- CapCut process detection
+- CapCut launch
+- CapCut quit
+- draft reading
+- draft writing
+- sandbox footage creation
+- null timerange repair
+- replay handling
+- text insertion
+- live launch
+- live quit
+- live play
+- live split
+- live export
+- live shot
+
+Existing code includes:
 
 capcut-bridge-win.py
-capcut-plugin-win.py
-install-plugin-win.bat
-Bridge به‌صورت محلی اجرا می‌شود:
 
-127.0.0.1
-و نباید مستقیماً در اینترنت عمومی قرار گیرد.
+Do NOT rewrite this file for Phase 4B.
 
-🍏 پشتیبانی macOS
-Bridge مک از ابزارهای زیر استفاده می‌کند:
+============================================================
+11. EXISTING SAFETY LIMITATION
+============================================================
 
-uv
+The existing live export implementation does NOT necessarily
+verify that export completion/output-file creation has occurred.
 
-PyObjC
+Do NOT falsely report export verification.
 
-Quartz
+Phase 4B must preserve the distinction between:
 
-کنترل محلی محیط دسکتاپ
+requested
 
-نمونه:
+started
 
-uv run capcut-bridge.py ls
-🏗️ معماری سیستم
-┌──────────────────────────────────────────────┐
-│              لایه هوش مصنوعی                 │
-│                                              │
-│ Gemini • Claude • Cursor • سایر ابزارها      │
-└───────────────────────┬──────────────────────┘
-                        │
-                        ▼
-┌──────────────────────────────────────────────┐
-│             CapCut Bridge Engine             │
-│                                              │
-│   ┌────────────────┐   ┌─────────────────┐  │
-│   │   FILE LANE    │   │    LIVE LANE    │  │
-│   │                │   │                 │  │
-│   │ فایل پروژه     │   │ pyautogui       │  │
-│   │ draft_content  │   │ PyObjC          │  │
-│   │ assets         │   │ keyboard       │  │
-│   │ replay         │   │ desktop        │  │
-│   └────────────────┘   └─────────────────┘  │
-└───────────────────────┬──────────────────────┘
-                        │
-                        ▼
-┌──────────────────────────────────────────────┐
-│               CapCut Desktop                 │
-│              Windows / macOS                 │
-└──────────────────────────────────────────────┘
-🛣️ معماری دو مسیره
-📁 File Lane
-مسیر File Lane با داده‌های محلی پروژه کار می‌کند.
+completed
 
-گردش‌کار کلی:
+verified
 
-پروژه CapCut
-     ↓
-Backup / Staging
-     ↓
-داده پروژه
-     ↓
-تغییر / تولید
-     ↓
-اعتبارسنجی
-     ↓
-CapCut
-این مسیر می‌تواند برای مواردی مانند موارد زیر استفاده شود:
+These are not interchangeable.
 
-ساخت پروژه از داده‌های ساختاریافته کات
+============================================================
+12. EXISTING PROJECT TEST STATUS
+============================================================
 
-افزودن متن
+Previous phases already had successful tests.
 
-مدیریت داده‌های پروژه
+Phase 2 introduced:
 
-آماده‌سازی اطلاعات پروژه
+9 dedicated Draft Engine tests.
 
-Replay کردن Edit Plan
+The broader Python suite previously reached:
 
-🖥️ Live Lane
-Live Lane با استفاده از اتوماسیون محلی دسکتاپ با برنامه تعامل می‌کند.
+18 tests.
 
-نمونه عملیات:
+Phase 3A added:
 
-Split        → Ctrl+B / Cmd+B
-Play/Pause   → Space
-Export       → Ctrl+E / Cmd+E
-Dismiss      → Esc
-عملیات Live به عوامل زیر وابسته است:
+11 dedicated Smart Editing tests.
 
-پنجره فعال
+The broader Python suite previously reached:
 
-نسخه CapCut
+29 tests.
 
-Focus
+The existing Node test also passed:
 
-وضعیت دسکتاپ
+tests/rate_limit.test.mjs
 
-Timing
+IMPORTANT:
 
-مجوزهای سیستم
+These tests are primarily unit/mock-level tests.
 
-بنابراین ارسال یک Shortcut به‌تنهایی به معنی موفقیت قطعی عملیات نیست.
+They do NOT prove complete live CapCut Desktop integration.
 
-🔐 ایمنی و اعتبارسنجی
-یکی از اصول مهم پروژه تفاوت میان:
+Do not claim that the entire system is production-verified
+against every CapCut Desktop version.
 
-Command Sent
-و:
+============================================================
+13. CURRENT ARCHITECTURAL PRINCIPLE
+============================================================
 
-Action Verified
-است.
+The Bridge is NOT supposed to perform all editing decisions.
 
-برای مثال:
+The Bridge is the execution arm of AI.
 
-ارسال فرمان Export
-        ≠
-تکمیل Export
-و:
-
-ارسال فرمان Split
-        ≠
-Split موفق کلیپ
-هرجا امکان Readback وجود داشته باشد، وضعیت واقعی پروژه باید بررسی شود.
-
-اگر امکان اعتبارسنجی وجود نداشته باشد، سیستم باید صریحاً اعلام کند که نتیجه تأیید نشده است.
-
-🛡️ ایمنی Replay
-فرایند replay نباید پروژه موجود را بدون تأیید صریح جایگزین کند.
-
-نمونه:
-
-uv run capcut-bridge.py replay sample-cuts.json \
-  --name MyViralVideo \
-  --overwrite \
-  --confirm-name MyViralVideo
-گردش‌کار پیشنهادی:
-
-Request
-  ↓
-Staging
-  ↓
-Validation
-  ↓
-Backup
-  ↓
-تأیید صریح نام
-  ↓
-Replacement
-🔌 MCP
-معماری MCP به‌صورت محلی طراحی شده است:
-
-AI Client
-   │
-   │ MCP / stdio
-   ▼
-CapCut Bridge
-   │
-   ├── File Operations
-   ├── Project Operations
-   ├── Local Automation
-   └── Desktop Bridge
-در وضعیت فعلی، MCP کنترل کامل و نامحدود Timeline باز CapCut را ارائه نمی‌کند.
-
-📡 REST API
-REST Controller ویندوز به‌صورت محلی روی:
-
-http://127.0.0.1:8765
-اجرا می‌شود.
-
-نمونه Endpointها:
-
-Method	Endpoint	عملکرد
-GET	/api/v1/status	وضعیت CapCut و سرویس محلی
-GET	/api/v1/drafts	فهرست پروژه‌های محلی
-POST	/api/v1/split	ارسال فرمان Split
-POST	/api/v1/export	ارسال فرمان Export
-POST	/api/v1/play	Play / Pause
-برخی عملیات فقط ارسال فرمان را تأیید می‌کنند و تکمیل واقعی عملیات را اثبات نمی‌کنند.
-
-🚀 نصب سریع
-Windows
-pip install pyautogui pillow flask requests pywin32
-اجرای Bridge:
-
-python capcut-plugin-win.py
-فهرست پروژه‌ها:
-
-python capcut-bridge-win.py ls
-macOS
-نصب uv در صورت نیاز:
-
-curl -LsSf https://astral.sh/uv/install.sh | sh
-فهرست پروژه‌ها:
-
-uv run capcut-bridge.py ls
-Replay:
-
-uv run capcut-bridge.py replay sample-cuts.json --name MyViralVideo
-💻 نمونه دستورات CLI
-فهرست پروژه‌ها
-python capcut-bridge-win.py ls
-یا:
-
-uv run capcut-bridge.py ls
-ساخت پروژه از Cut List
-python capcut-bridge-win.py replay sample-cuts.json `
-  --name "Podcast_Highlight_01"
-جایگزینی ایمن
-python capcut-bridge-win.py replay sample-cuts.json `
-  --name "Podcast_Highlight_01" `
-  --overwrite `
-  --confirm-name "Podcast_Highlight_01"
-افزودن متن
-python capcut-bridge-win.py add-text \
-  "Podcast_Highlight_01" \
-  "Your text here" \
-  --at 1.2 \
-  --dur 2.0
-افزودن Overlay
-python capcut-bridge-win.py add-overlay \
-  "Podcast_Highlight_01" \
-  broll.mp4 \
-  --at 2.0 \
-  --dur 3.5 \
-  --layer 2
-Transform
-python capcut-bridge-win.py transform \
-  "Podcast_Highlight_01" \
-  --track overlay \
-  --index 1 \
-  --scale 1.15 \
-  --y -0.1
-🎨 کتابخانه پرامپت‌های تدوین
-پروژه شامل منابعی برای گردش‌کارهای تدوین با کمک هوش مصنوعی است.
-
-موضوعات شامل:
-
-نورپردازی حرفه‌ای
-
-نورپردازی Rembrandt
-
-استایل Neon / Cyberpunk
-
-Golden Hour
-
-Speed Ramp
-
-J-Cut
-
-تدوین سینمایی
-
-مهندسی صدا
-
-Safe Zones
-
-حفظ مخاطب
-
-تدوین برای شبکه‌های اجتماعی
-
-این منابع به‌عنوان راهنمای تدوین و Prompt Library ارائه می‌شوند و تضمین اجرای خودکار همه موارد نیستند.
-
-📚 گردش‌کار پیشنهادی
-1. ورود ویدیو
-      ↓
-2. تحلیل محتوا
-      ↓
-3. تولید Transcript / Edit Decisions
-      ↓
-4. ساخت Cut List
-      ↓
-5. بررسی تصمیم‌های تدوین
-      ↓
-6. Replay / Assemble
-      ↓
-7. افزودن متن و Overlay
-      ↓
-8. Verification
-      ↓
-9. باز کردن در CapCut
-      ↓
-10. بررسی انسانی
-      ↓
-11. Export
-هدف پروژه حذف کامل بررسی انسانی نیست؛ بلکه ساختن یک Workflow قابل تکرار و قابل کنترل است.
-
-📂 ساختار Repository
-capcut-bridge-kit/
-│
-├── .gitignore
-├── LICENSE
-├── README.md
-│
-├── install-plugin-win.bat
-├── capcut-bridge-win.py
-├── capcut-plugin-win.py
-├── capcut-bridge.py
-│
-├── INPUT-CONTRACT.md
-├── sample-cuts.json
-├── sample-graphics-plan.json
-│
-├── package.json
-├── vite.config.ts
-│
-└── src/
-    ├── components/
-    │   ├── CapCutStudio.tsx
-    │   ├── PromptLibrary.tsx
-    │   ├── EditingMastery.tsx
-    │   ├── WindowsPluginGuide.tsx
-    │   ├── CommandBuilder.tsx
-    │   └── TimelineVisualizer.tsx
-    │
-    └── data/
-        ├── editingPrompts.ts
-        └── bridgeSource.ts
-🧩 وضعیت پروژه
-بخش	وضعیت
-Local Project Tooling	🟢 پیاده‌سازی شده
-Windows Bridge	🟢 پیاده‌سازی شده / در حال توسعه
-macOS Bridge	🟢 پیاده‌سازی شده / در حال توسعه
-Local REST	🟢 پیاده‌سازی شده
-MCP	🟢 پیاده‌سازی شده
-Project File Workflows	🧪 آزمایشی
-Live Desktop Automation	🧪 آزمایشی
-Full Open Timeline Control	🚧 هنوز ارائه نشده
-AI Editing Orchestration	🚧 در حال توسعه
-Production Verification	🚧 در حال توسعه
-🗺️ نقشه راه
-Phase 1 — Foundation
-Local Python Bridge
-
-Windows Automation
-
-macOS Automation
-
-Local REST
-
-MCP Foundation
-
-Project Replay
-
-Phase 2 — Reliability
-Safe Project Replacement
-
-Staging
-
-Backup
-
-Local Network Boundary
-
-Action / Verification Separation
-
-Expanded Readback
-
-More Live CapCut Testing
-
-Phase 3 — AI Editing
-AI Edit Plan
-
-Structured Editing Orchestration
-
-Transcript-driven Cuts
-
-Subtitle Automation
-
-B-roll Planning
-
-Audio Cleanup Planning
-
-Style-aware Editing Prompts
-
-Phase 4 — Production
-Job Lifecycle
-
-Queue Management
-
-Provider Registry
-
-Export Verification
-
-Batch Editing
-
-Production-grade Desktop Lifecycle
-
-Phase 5 — Ecosystem
-Additional Editors
-
-Additional MCP Integrations
-
-Community Plugins
-
-Expanded Documentation
-
-Community-maintained Adapters
-
-🤝 مشارکت
-از مشارکت توسعه‌دهندگان، مهندسان AI، تدوینگران، طراحان Motion، مهندسان Automation و توسعه‌دهندگان MCP استقبال می‌شود.
-
-git clone https://github.com/Hesaar-Studio/capcut-bridge-kit.git
-
-cd capcut-bridge-kit
-
-git checkout -b feature/your-feature
-پس از تغییرات:
-
-git add .
-git commit -m "Add your feature"
-git push origin feature/your-feature
-سپس Pull Request ایجاد کنید.
-
-🧪 فلسفه تست
-قبل از اینکه یک قابلیت Automation قابل اعتماد تلقی شود، باید بررسی شود:
-
-آیا فرمان اجرا شد؟
-
-آیا تغییر مورد انتظار در پروژه اتفاق افتاد؟
-
-آیا تغییر قابل Readback است؟
-
-آیا روی نسخه هدف CapCut آزمایش شده؟
-
-آیا خطا به شکل صحیح گزارش می‌شود؟
-
-آیا اجرای دوباره امن است؟
-
-آیا امکان بازیابی پروژه اصلی وجود دارد؟
-
-موفقیت Process به‌تنهایی به معنی موفقیت Edit نیست.
-
-⚠️ محدودیت‌های شناخته‌شده
-رفتار CapCut ممکن است بین نسخه‌های مختلف تغییر کند.
-
-اتوماسیون فایل پروژه ممکن است به موارد زیر وابسته باشد:
-
-ساختار داخلی پروژه
-
-محل فایل‌ها
-
-نسخه CapCut
-
-مسیر Media
-
-وضعیت پروژه
-
-سیستم‌عامل
-
-وضعیت برنامه
-
-اتوماسیون دسکتاپ نیز می‌تواند به موارد زیر وابسته باشد:
-
-پنجره فعال
-
-Focus
-
-ابعاد پنجره
-
-وضعیت صفحه
-
-Timing
-
-مجوزهای سیستم
-
-بنابراین:
-
-همیشه ابتدا روی یک Copy از پروژه مهم خود آزمایش کنید.
-
-🔒 امنیت
-Bridge برای استفاده محلی طراحی شده است.
-
-لطفاً موارد زیر را در Repository یا Issueها قرار ندهید:
-
-API Keys
-
-Tokens
-
-Passwords
-
-Credentials
-
-فایل‌های خصوصی پروژه
-
-Media خصوصی
-
-Secrets مربوط به سیستم
-
-Bridge محلی را مستقیماً در اینترنت عمومی قرار ندهید.
-
-📜 مجوز
-این پروژه تحت مجوز MIT License منتشر می‌شود.
-
-فایل کامل مجوز:
-
-LICENSE
-🏢 نگهدارنده پروژه
-Hesaar Studio
-
-GitHub:
-
-https://github.com/Hesaar-Studio
-
-Repository:
-
-https://github.com/Hesaar-Studio/capcut-bridge-kit
-
-⚖️ Disclaimer
-CapCut محصول و علامت تجاری ByteDance است.
-
-CapCut Bridge Kit یک پروژه مستقل Open Source است و به‌عنوان محصول رسمی ByteDance معرفی نمی‌شود.
-
-ساختار پروژه، رابط دسکتاپ و رفتار CapCut ممکن است در نسخه‌های آینده تغییر کند.
-
-❤️ Open Source
-CapCut Bridge Kit با هدف ایجاد یک پل متن‌باز میان:
+Correct:
 
 AI
-+
-MCP
-+
-Automation
-+
-Video Editing
-ساخته می‌شود.
+ ↓
+Bridge analysis
+ ↓
+AI decision
+ ↓
+Bridge execution
+ ↓
+CapCut
 
-از تست، مستندسازی، گزارش خطا، پیشنهاد قابلیت و مشارکت مسئولانه استقبال می‌شود.
+Incorrect:
 
-🇨🇳 中文
-📖 项目简介
-CapCut Bridge Kit 是一个开源项目，旨在将 AI 辅助视频编辑工作流、开发者工具与 CapCut Desktop 连接起来。
+User
+ ↓
+Bridge's own AI
+ ↓
+Bridge independently decides everything
+ ↓
+CapCut
 
-项目面向：
+Do NOT introduce an autonomous editing brain.
 
-Windows
+============================================================
+14. THREE-WAY FUTURE ARCHITECTURE
+============================================================
 
-macOS
+The architecture may eventually support:
 
-并提供：
-
-本地 Python Bridge
-
-MCP 集成
-
-项目文件操作
-
-桌面自动化
-
-本地 REST 服务
-
-CLI 工作流
-
-AI 编辑 Prompt 资源
-
-实验性项目/时间线操作
-
-整体工作流：
-
-AI 工具
-   ↓
-MCP / 本地自动化
-   ↓
-CapCut Bridge Kit
-   ↓
+External AI
+      ↕
+CapCut Bridge
+      ↕
 CapCut Desktop
-   ↓
-视频编辑工作流
-⚠️ CapCut 并没有为本项目涉及的所有操作提供稳定、公开的官方 API。因此，部分功能依赖 CapCut 的项目文件结构、软件版本以及桌面端行为。
+      ↕
+CapCut-native AI capabilities
 
-在处理重要项目之前，请始终创建备份。
+However:
 
-🎯 项目目标
-CapCut Bridge Kit 的目标是建立一个实用的 AI → CapCut 桥接层，使视频编辑流程更加：
+DO NOT assume CapCut exposes a controllable external AI API.
 
-可重复
+Do NOT invent one.
 
-可脚本化
+CapCut AI should only be integrated if a real supported interface
+is verified.
 
-可检查
+============================================================
+15. PHASE 4A — ALREADY DESIGNED
+============================================================
 
-可扩展
+Phase 4A established the conceptual AI Editing Contract.
 
-可通过 MCP 与 AI 工具连接
+The planned files are:
 
-本项目不会声称 CapCut 为所有自动化功能提供官方公共 API。
+ai_contract/__init__.py
+ai_contract/capabilities.py
+ai_contract/schemas.py
+ai_contract/receipt.py
+ai_contract/dispatcher.py
 
-✨ 核心功能
-🤖 本地 MCP
-项目提供本地 MCP 架构，用于将已经实现的 Bridge 功能提供给兼容的 AI / Developer 工具。
+and:
 
-当前能力可能包括：
+tests/test_ai_contract.py
 
-项目发现
+The Phase 4A design was reviewed and approved.
 
-本地状态检查
+Phase 4B is now the implementation phase.
 
-项目创建
+============================================================
+16. PHASE 4B OBJECTIVE
+============================================================
 
-文本添加
+Implement the provider-neutral AI Editing Contract.
 
-基于文件的编辑操作
+The contract must become the common interface between:
 
-本地 Bridge 通信
+ChatGPT
+Claude
+Gravity
+Gemini
+future AI clients
 
-目前 MCP 并不提供对已打开 CapCut 时间线的无限制完整控制。
+and:
 
-🪟 Windows
-Windows Bridge 使用：
+CapCut Bridge Kit
 
-pyautogui
+The same contract must work regardless of the AI provider.
 
-Win32 API
+============================================================
+17. CORE CAPABILITY CATALOG
+============================================================
 
-本地 REST Bridge
+The conceptual capability/tool catalog is:
 
-Python 脚本
+1. get_capabilities
 
-桌面键盘自动化
+2. inspect_project
 
-主要文件：
+3. inspect_timeline
+
+4. inspect_media
+
+5. inspect_subtitles
+
+6. analyze_gaps
+
+7. analyze_duplicates
+
+8. create_edit_plan
+
+9. validate_edit_plan
+
+10. preview_edit_plan
+
+11. execute_edit_plan
+
+12. verify_execution
+
+13. get_execution_receipt
+
+These are conceptual contract operations.
+
+Inspect the repository first.
+
+If an existing implementation requires a different naming or
+structure, adapt carefully and document the reason.
+
+Do not create fake capabilities.
+
+============================================================
+18. CAPABILITY REGISTRY
+============================================================
+
+Implement:
+
+ai_contract/capabilities.py
+
+The registry must expose the ACTUAL capabilities available in
+the current runtime.
+
+Possible states include:
+
+- available
+- unavailable
+- experimental
+- read_only
+- requires_confirmation
+- requires_live_capcut
+
+Only use states that make sense for the actual implementation.
+
+The registry must be:
+
+- deterministic
+- typed
+- JSON serializable
+- provider-neutral
+
+Example conceptual response:
+
+{
+  "protocol_version": "1.x",
+  "bridge_version": "...",
+  "capabilities": [
+    {
+      "name": "inspect_project",
+      "available": true,
+      "read_only": true
+    }
+  ]
+}
+
+This is conceptual.
+
+Do not invent version numbers.
+
+============================================================
+19. SCHEMAS
+============================================================
+
+Implement:
+
+ai_contract/schemas.py
+
+The schema layer should clearly distinguish:
+
+- request
+- response
+- capability
+- analysis result
+- EditPlan
+- validation result
+- execution request
+- execution result
+- error result
+
+All structures must be:
+
+- typed
+- deterministic
+- JSON serializable
+
+Do not create one giant generic dictionary for everything.
+
+============================================================
+20. EXISTING MODEL REUSE
+============================================================
+
+Where possible, reuse:
+
+Draft Engine models
+
+and:
+
+Smart Editing models
+
+especially:
+
+- DraftProject
+- Track
+- Segment
+- TextMaterial
+- SubtitleItem
+- SubtitleGap
+- DuplicateCandidate
+- EditPlan
+- PlanItem
+
+Do NOT duplicate these into completely unrelated parallel models
+unless an adapter is genuinely required.
+
+============================================================
+21. PERSIAN / FARSI IS FIRST-CLASS
+============================================================
+
+Persian/Farsi support is REQUIRED.
+
+The contract must support full Unicode/UTF-8.
+
+Human-facing data may be Persian.
+
+This includes:
+
+- prompts
+- project names
+- media names
+- subtitles
+- descriptions
+- EditPlan descriptions
+- warnings
+- errors
+- receipts
+- reports
+- user-facing messages
+
+Example user prompt:
+
+"مکث‌های طولانی این ویدیو را پیدا کن و برای حذف آماده کن"
+
+The external AI interprets this.
+
+The Bridge receives structured data such as:
+
+{
+  "operation": "analyze_gaps",
+  "parameters": {
+    "min_gap_sec": 1.0
+  }
+}
+
+Machine identifiers remain English.
+
+Human content may remain Persian.
+
+Do NOT create separate Persian API endpoints.
+
+Do NOT transliterate Persian.
+
+Do NOT strip Unicode.
+
+Do NOT convert Persian to ASCII.
+
+============================================================
+22. PERSIAN TEST REQUIREMENTS
+============================================================
+
+tests/test_ai_contract.py
+
+MUST include tests for:
+
+- Persian project name
+- Persian subtitle
+- Persian EditPlan description
+- Persian warning
+- Persian error
+- JSON serialization/deserialization
+- Unicode round-trip
+
+Use real Persian strings.
+
+Example:
+
+"پروژه آموزشی روانشناسی"
+
+"این یک زیرنویس فارسی برای آزمایش است."
+
+"مکث طولانی شناسایی شد."
+
+============================================================
+23. NATURAL LANGUAGE IS NOT THE BRIDGE'S JOB
+============================================================
+
+The Bridge does NOT need an LLM.
+
+Do NOT add:
+
+- OpenAI SDK
+- Anthropic SDK
+- Gemini SDK
+- LLM inference
+- NLP model
+
+to interpret user prompts.
+
+The external AI performs natural-language understanding.
+
+Bridge receives structured requests.
+
+Correct separation:
+
+Natural Language Understanding
+=
+External AI
+
+Structured Contract
+=
+Bridge
+
+Execution
+=
+Bridge / CapCut
+
+============================================================
+24. DISPATCHER
+============================================================
+
+Implement:
+
+ai_contract/dispatcher.py
+
+The dispatcher is ONLY a routing/contract layer.
+
+It must:
+
+1. receive structured request
+2. validate request
+3. identify operation
+4. check capability
+5. route supported operation
+6. reject unsupported operation
+7. return structured result/error
+
+It must NOT:
+
+- make creative decisions
+- invent edits
+- call an LLM
+- choose which footage is better
+- decide which duplicate should be removed
+- bypass security
+- bypass backup
+- bypass validation
+- bypass confirmation
+- bypass verification
+
+============================================================
+25. READ-ONLY OPERATIONS FIRST
+============================================================
+
+The first genuinely usable Phase 4B operations should be read-only.
+
+Integrate existing:
+
+Draft Engine
+
+and:
+
+Smart Editing
+
+functionality.
+
+Potential read-only operations:
+
+- inspect_project
+- inspect_timeline
+- inspect_media
+- inspect_subtitles
+- analyze_gaps
+- analyze_duplicates
+- create_edit_plan
+- validate_edit_plan
+- preview_edit_plan
+
+Do not create duplicate algorithms.
+
+============================================================
+26. MUTATION SAFETY
+============================================================
+
+Do NOT implement destructive execution merely because:
+
+execute_edit_plan
+
+exists in the schema.
+
+The contract may define the operation while the capability reports:
+
+unavailable
+
+until a verified safe implementation exists.
+
+Never fake execution.
+
+Never return:
+
+"success"
+
+unless the requested operation actually occurred.
+
+Never return:
+
+"verified"
+
+unless verification actually occurred.
+
+============================================================
+27. EXECUTION RECEIPT
+============================================================
+
+Implement:
+
+ai_contract/receipt.py
+
+ExecutionReceipt should support appropriate fields such as:
+
+- execution_id
+- project_name
+- requested_operation
+- actions
+- status
+- applied
+- validation
+- verification
+- backup
+- warnings
+- errors
+
+Possible statuses:
+
+- planned
+- awaiting_confirmation
+- executing
+- verified
+- failed
+- rolled_back
+- unsupported
+
+Only use states appropriate to actual behavior.
+
+============================================================
+28. PROVIDER NEUTRALITY
+============================================================
+
+The contract must not contain logic like:
+
+if provider == "chatgpt"
+
+or:
+
+if provider == "claude"
+
+or:
+
+if provider == "gemini"
+
+or:
+
+if provider == "gravity"
+
+Do not create provider-specific branches.
+
+============================================================
+29. MCP
+============================================================
+
+DO NOT rewrite MCP in Phase 4B.
+
+Future architecture:
+
+AI
+ ↓
+MCP
+ ↓
+AI Editing Contract
+ ↓
+Bridge
+
+MCP should eventually be an adapter over the contract.
+
+Do not create a second incompatible schema system.
+
+============================================================
+30. REST
+============================================================
+
+DO NOT rewrite REST in Phase 4B.
+
+Future architecture:
+
+AI / Client
+ ↓
+REST
+ ↓
+AI Editing Contract
+ ↓
+Bridge
+
+============================================================
+31. EXISTING MCP/REST FILES
+============================================================
+
+Existing files include potentially:
+
+bridge_system/bridge_server.py
+
+chatgpt-capcut-server.py
+
+chatgpt-functions-schema.json
+
+chatgpt-openapi-spec.json
+
+Inspect them.
+
+Do not modify them unless absolutely necessary.
+
+If modification is genuinely required:
+
+STOP BEFORE MODIFYING.
+
+Report:
+
+- file
+- reason
+- exact required change
+- compatibility impact
+
+============================================================
+32. CAPCUT AI
+============================================================
+
+Do NOT assume external CapCut AI API access.
+
+Do NOT invent APIs.
+
+Do NOT create fake tools.
+
+The architecture may later support a CapCut AI adapter.
+
+But only after a real interface is verified.
+
+============================================================
+33. SECURITY
+============================================================
+
+Preserve existing security.
+
+Do not:
+
+- expose bridge publicly
+- weaken localhost restrictions
+- weaken CORS
+- add hardcoded secrets
+- bypass path validation
+- bypass project protection
+- bypass backups
+- bypass validation
+
+============================================================
+34. NO UI WORK
+============================================================
+
+Do NOT modify:
+
+- Control Panel
+- frontend
+- UI
+- design
+- branding
+- README
+
+Phase 4B is backend contract architecture.
+
+============================================================
+35. NO LIVE AUTOMATION CHANGES
+============================================================
+
+Do NOT modify:
+
+- Windows Live Lane
+- pyautogui workflows
+- Win32 automation
+- macOS automation
+
+unless absolutely required for contract compatibility.
+
+============================================================
+36. TESTING
+============================================================
+
+Create:
+
+tests/test_ai_contract.py
+
+Minimum coverage:
+
+1. capability registry
+2. capability serialization
+3. capability states
+4. request validation
+5. response serialization
+6. supported routing
+7. unsupported routing
+8. read-only routing
+9. provider neutrality
+10. ExecutionReceipt serialization
+11. execution states
+12. no fake success
+13. mutation rejection when unsupported
+14. no unintended mutation
+15. Persian project name
+16. Persian subtitle
+17. Persian EditPlan
+18. Persian warning/error
+19. Unicode JSON round-trip
+20. compatibility with existing EditPlan
+
+Then run:
+
+python -m unittest discover -s tests -p "test_*.py"
+
+Also run:
+
+tests/rate_limit.test.mjs
+
+All previous tests must continue to pass.
+
+============================================================
+37. REGRESSION PROTECTION
+============================================================
+
+Phase 4B must not break:
+
+- Draft Engine
+- Smart Editing
+- Windows File Lane
+- Windows Live Lane
+- existing bridge
+- existing plugin
+- existing MCP
+- existing REST
+- security behavior
+
+If a regression occurs:
+
+STOP.
+
+Do not silently repair unrelated architecture.
+
+============================================================
+38. FILES TO CREATE
+============================================================
+
+Create:
+
+ai_contract/__init__.py
+ai_contract/capabilities.py
+ai_contract/schemas.py
+ai_contract/receipt.py
+ai_contract/dispatcher.py
+tests/test_ai_contract.py
+
+============================================================
+39. FILES NOT TO MODIFY BY DEFAULT
+============================================================
+
+Do not modify unless absolutely necessary:
 
 capcut-bridge-win.py
+capcut-bridge.py
 capcut-plugin-win.py
-install-plugin-win.bat
-Bridge 默认使用本地地址：
+chatgpt-capcut-server.py
+bridge_system/bridge_server.py
+chatgpt-functions-schema.json
+chatgpt-openapi-spec.json
+README.md
+frontend
+Control Panel
+existing tests
+configuration
 
-127.0.0.1
-不建议将其直接暴露到公网。
-
-🍏 macOS
-macOS Bridge 使用：
+============================================================
+40. GIT SAFETY
+============================================================
 
-uv
+The repository already exists.
 
-PyObjC
+DO NOT:
 
-Quartz
+- git init
+- git reset
+- force push
+- rewrite history
+- delete branches
+- commit
+- push
 
-macOS 本地桌面控制
+Do not modify Git history.
 
-示例：
+============================================================
+41. NO FAKE CAPABILITIES
+============================================================
 
-uv run capcut-bridge.py ls
-🏗️ 系统架构
-┌──────────────────────────────────────────────┐
-│                  AI 层                       │
-│                                              │
-│ Gemini • Claude • Cursor • Other AI Tools    │
-└───────────────────────┬──────────────────────┘
-                        │
-                        ▼
-┌──────────────────────────────────────────────┐
-│             CapCut Bridge Engine             │
-│                                              │
-│   ┌────────────────┐   ┌─────────────────┐  │
-│   │   FILE LANE    │   │    LIVE LANE    │  │
-│   │                │   │                 │  │
-│   │ 项目文件       │   │ pyautogui       │  │
-│   │ draft_content  │   │ PyObjC          │  │
-│   │ assets         │   │ keyboard        │  │
-│   │ replay         │   │ desktop         │  │
-│   └────────────────┘   └─────────────────┘  │
-└───────────────────────┬──────────────────────┘
-                        │
-                        ▼
-┌──────────────────────────────────────────────┐
-│              CapCut Desktop                  │
-│              Windows / macOS                 │
-└──────────────────────────────────────────────┘
-🛣️ 双通道架构
-📁 File Lane
-File Lane 主要处理本地项目数据。
-
-典型流程：
-
-CapCut 项目
-    ↓
-Backup / Staging
-    ↓
-项目数据
-    ↓
-修改 / 生成
-    ↓
-验证
-    ↓
-CapCut
-可以用于：
-
-从结构化 Cut List 创建项目
-
-添加文本
-
-处理项目资源
-
-准备项目数据
-
-Replay 编辑计划
-
-🖥️ Live Lane
-Live Lane 通过本地桌面自动化与 CapCut 进行交互。
-
-例如：
-
-Split        → Ctrl+B / Cmd+B
-Play/Pause   → Space
-Export       → Ctrl+E / Cmd+E
-Dismiss      → Esc
-Live 操作可能受到以下因素影响：
-
-当前窗口
-
-CapCut 版本
-
-Focus
-
-桌面状态
-
-Timing
-
-系统权限
-
-因此：
-
-发送快捷键
-    ≠
-操作已经成功完成
-🔐 安全与验证
-项目的重要原则是区分：
-
-Command Sent
-和：
-
-Action Verified
-例如：
-
-发送 Export 命令
-       ≠
-Export 已完成
-以及：
-
-发送 Split 命令
-       ≠
-剪辑已经成功 Split
-如果可以读取项目状态，应进行 Readback 验证。
-
-如果无法验证，则必须明确说明结果没有得到确认。
-
-🛡️ Replay 安全
-replay 不应该在没有明确确认的情况下覆盖已有项目。
-
-示例：
-
-uv run capcut-bridge.py replay sample-cuts.json \
-  --name MyViralVideo \
-  --overwrite \
-  --confirm-name MyViralVideo
-设计流程：
-
-Request
-  ↓
-Staging
-  ↓
-Validation
-  ↓
-Backup
-  ↓
-明确确认项目名称
-  ↓
-Replacement
-🔌 MCP
-MCP 架构：
-
-AI Client
-   │
-   │ MCP / stdio
-   ▼
-CapCut Bridge
-   │
-   ├── File Operations
-   ├── Project Operations
-   ├── Local Automation
-   └── Desktop Bridge
-当前版本并不提供对打开的 CapCut Timeline 的无限制完整控制。
-
-📡 本地 REST API
-Windows Controller 默认运行于：
-
-http://127.0.0.1:8765
-示例 Endpoint：
-
-Method	Endpoint	功能
-GET	/api/v1/status	CapCut / 本地服务状态
-GET	/api/v1/drafts	本地项目列表
-POST	/api/v1/split	发送 Split 操作
-POST	/api/v1/export	发送 Export 操作
-POST	/api/v1/play	Play / Pause
-部分接口只能确认命令已经发送，而不能证明 CapCut 已经完成操作。
-
-🚀 快速安装
-Windows
-安装依赖：
-
-pip install pyautogui pillow flask requests pywin32
-启动 Bridge：
-
-python capcut-plugin-win.py
-查看项目：
-
-python capcut-bridge-win.py ls
-macOS
-如果尚未安装 uv：
-
-curl -LsSf https://astral.sh/uv/install.sh | sh
-查看项目：
-
-uv run capcut-bridge.py ls
-Replay：
-
-uv run capcut-bridge.py replay sample-cuts.json --name MyViralVideo
-💻 CLI 示例
-查看项目
-python capcut-bridge-win.py ls
-或者：
-
-uv run capcut-bridge.py ls
-Replay Cut List
-python capcut-bridge-win.py replay sample-cuts.json `
-  --name "Podcast_Highlight_01"
-安全替换
-python capcut-bridge-win.py replay sample-cuts.json `
-  --name "Podcast_Highlight_01" `
-  --overwrite `
-  --confirm-name "Podcast_Highlight_01"
-添加文本
-python capcut-bridge-win.py add-text \
-  "Podcast_Highlight_01" \
-  "Your text here" \
-  --at 1.2 \
-  --dur 2.0
-添加 Overlay
-python capcut-bridge-win.py add-overlay \
-  "Podcast_Highlight_01" \
-  broll.mp4 \
-  --at 2.0 \
-  --dur 3.5 \
-  --layer 2
-Transform
-python capcut-bridge-win.py transform \
-  "Podcast_Highlight_01" \
-  --track overlay \
-  --index 1 \
-  --scale 1.15 \
-  --y -0.1
-🎨 AI 编辑 Prompt Library
-项目还包含 AI 辅助视频编辑工作流相关资源。
-
-主题包括：
-
-专业灯光
-
-Rembrandt Lighting
-
-Neon / Cyberpunk
-
-Golden Hour
-
-Speed Ramp
-
-J-Cut
-
-Cinematic Editing
-
-Audio Engineering
-
-Safe Zones
-
-Audience Retention
-
-Social Media Editing
-
-这些资源主要用于编辑指导和 Prompt 工作流，不代表所有效果都可以自动执行。
-
-📚 推荐工作流
-1. 导入视频
-      ↓
-2. 内容分析
-      ↓
-3. Transcript / Edit Decisions
-      ↓
-4. 创建 Cut List
-      ↓
-5. 审核编辑决策
-      ↓
-6. Replay / Assemble
-      ↓
-7. 添加文字 / Overlay
-      ↓
-8. Verification
-      ↓
-9. 在 CapCut 中打开
-      ↓
-10. 人工检查
-      ↓
-11. Export
-项目的目标不是完全取消人工检查，而是让编辑工作流更加结构化、可重复和可控制。
-
-📂 Repository Structure
-capcut-bridge-kit/
-│
-├── .gitignore
-├── LICENSE
-├── README.md
-│
-├── install-plugin-win.bat
-├── capcut-bridge-win.py
-├── capcut-plugin-win.py
-├── capcut-bridge.py
-│
-├── INPUT-CONTRACT.md
-├── sample-cuts.json
-├── sample-graphics-plan.json
-│
-├── package.json
-├── vite.config.ts
-│
-└── src/
-    ├── components/
-    │   ├── CapCutStudio.tsx
-    │   ├── PromptLibrary.tsx
-    │   ├── EditingMastery.tsx
-    │   ├── WindowsPluginGuide.tsx
-    │   ├── CommandBuilder.tsx
-    │   └── TimelineVisualizer.tsx
-    │
-    └── data/
-        ├── editingPrompts.ts
-        └── bridgeSource.ts
-🧩 项目状态
-模块	状态
-Local Project Tooling	🟢 已实现
-Windows Bridge	🟢 已实现 / 持续开发
-macOS Bridge	🟢 已实现 / 持续开发
-Local REST	🟢 已实现
-MCP	🟢 已实现
-Project File Workflows	🧪 实验性
-Live Desktop Automation	🧪 实验性
-Full Open Timeline Control	🚧 尚未提供
-AI Editing Orchestration	🚧 开发中
-Production Verification	🚧 开发中
-🗺️ Roadmap
-Phase 1 — Foundation
-Local Python Bridge
-
-Windows Automation
-
-macOS Automation
-
-Local REST
+This rule is critical.
 
-MCP Foundation
+The schema may describe future capabilities.
 
-Project Replay
+But the runtime must distinguish:
 
-Phase 2 — Reliability
-Safe Project Replacement
+DEFINED
 
-Staging
+from:
 
-Backup
+IMPLEMENTED
 
-Local Network Boundary
+from:
 
-Action / Verification Separation
+AVAILABLE
 
-Expanded Readback
+from:
 
-More Live CapCut Testing
+VERIFIED
 
-Phase 3 — AI Editing
-AI Edit Plan
+Example:
 
-Structured Editing Orchestration
+execute_edit_plan
 
-Transcript-driven Cuts
+may exist in the contract.
 
-Subtitle Automation
+But if safe execution is not implemented:
 
-B-roll Planning
+available = false
 
-Audio Cleanup Planning
+Do not pretend it works.
 
-Style-aware Editing Prompts
+============================================================
+42. NO FAKE VERIFICATION
+============================================================
 
-Phase 4 — Production
-Job Lifecycle
+Never say:
 
-Queue Management
+"execution verified"
 
-Provider Registry
+unless the Bridge actually inspected the resulting state.
 
-Export Verification
+Never say:
 
-Batch Editing
+"export completed"
 
-Production-grade Desktop Lifecycle
+unless completion is actually known.
 
-Phase 5 — Ecosystem
-Additional Editors
+Never say:
 
-Additional MCP Integrations
+"edit applied"
 
-Community Plugins
+unless the mutation actually happened.
 
-Expanded Documentation
+============================================================
+43. PHASE 4B SUCCESS CRITERIA
+============================================================
 
-Community-maintained Adapters
+Phase 4B is successful if:
 
-🤝 贡献
-欢迎以下领域的开发者和创作者参与：
-
-软件开发
-
-AI Engineering
-
-视频编辑
-
-Motion Design
-
-Automation
-
-MCP Development
-
-CapCut Workflow Research
-
-创建分支：
-
-git checkout -b feature/your-feature
-提交：
-
-git add .
-git commit -m "Add your feature"
-git push origin feature/your-feature
-然后创建 Pull Request。
-
-🧪 测试原则
-一个自动化功能在被认为可靠之前，应至少检查：
-
-命令是否执行？
-
-项目是否发生预期变化？
-
-是否可以 Readback？
-
-是否在目标 CapCut 版本上测试？
-
-错误是否被正确报告？
-
-重复执行是否安全？
-
-原始项目是否可以恢复？
-
-Process 成功退出并不等于 Edit 成功。
-
-⚠️ 已知限制
-CapCut 不同版本之间的行为可能不同。
-
-项目文件自动化可能依赖：
-
-内部项目结构
-
-文件位置
-
-CapCut 版本
-
-Media 路径
-
-项目状态
-
-操作系统
-
-应用状态
-
-桌面自动化可能依赖：
-
-当前窗口
-
-Focus
-
-窗口尺寸
-
-屏幕状态
-
-Timing
-
-系统权限
-
-因此：
-
-对重要项目进行自动化操作之前，请先在项目副本上测试。
-
-🔒 安全
-Bridge 面向本地使用。
-
-请不要在 GitHub Repository、Issue 或 Pull Request 中提交：
-
-API Keys
-
-Tokens
-
-Passwords
-
-Credentials
-
-私有项目文件
-
-私有媒体
-
-系统 Secrets
-
-不要将本地 Bridge 直接暴露到公网。
-
-📜 License
-本项目采用 MIT License。
-
-完整许可证：
-
-LICENSE
-🏢 Maintainer
-Hesaar Studio
-
-GitHub:
-
-https://github.com/Hesaar-Studio
-
-Repository:
-
-https://github.com/Hesaar-Studio/capcut-bridge-kit
-
-⚖️ Disclaimer
-CapCut 是 ByteDance 的产品和商标。
-
-CapCut Bridge Kit 是独立的开源项目，不代表 ByteDance 官方产品。
-
-CapCut 的项目结构、桌面界面和行为可能随版本更新而变化。
-
-❤️ Open Source
-CapCut Bridge Kit 希望逐步建立一个开放的：
-
-AI
-+
-MCP
-+
-Automation
-+
-Video Editing
-生态。
-
-欢迎测试、文档贡献、Bug Report、功能建议以及负责任的代码贡献。
-
-🌍 Language Versions
-🇬🇧 English — README.md
-
-🇮🇷 فارسی — README.fa.md
-
-🇨🇳 中文 — README.zh-CN.md
+- ai_contract exists
+- capability registry works
+- schemas are typed and serializable
+- dispatcher routes safely
+- existing Draft Engine is reused
+- existing Smart Editing is reused
+- Persian/Unicode works correctly
+- unsupported operations are explicitly rejected
+- no fake success exists
+- no autonomous AI was added
+- no provider-specific logic exists
+- existing tests still pass
+- new AI Contract tests pass
+- no existing functionality is unnecessarily rewritten
+
+============================================================
+44. FINAL REPORT
+============================================================
+
+After implementation, STOP.
+
+Do NOT continue to Phase 5.
+
+Do NOT implement:
+
+- MCP V2
+- REST V2
+- Control Panel integration
+- destructive editing
+- CapCut AI integration
+- external AI SDKs
+- autonomous AI editing
+
+Report exactly:
+
+1. files created
+2. files modified
+3. existing files preserved
+4. final capability registry
+5. final tool catalog
+6. schema summary
+7. dispatcher behavior
+8. ExecutionReceipt states
+9. Persian/Unicode support
+10. Phase 2 integration
+11. Phase 3A integration
+12. tests executed
+13. previous test count
+14. new test count
+15. total test count
+16. regression results
+17. currently available capabilities
+18. currently unavailable capabilities
+19. security status
+20. known limitations
+21. files requiring future integration
+22. whether any existing code had to be changed and why
+
+Then STOP.
+
+NO COMMIT.
+
+NO PUSH.
+
+NO AUTOMATIC NEXT PHASE.
