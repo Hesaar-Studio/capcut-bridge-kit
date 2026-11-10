@@ -14,10 +14,10 @@ import {
 } from '../data/bridgeSource';
 
 const FILES = [
-  { id: 'py_win', name: 'capcut-bridge-win.py', lang: 'python', content: CAPCUT_BRIDGE_WIN_PY, desc: 'Windows edition with pyautogui & Windows draft paths' },
-  { id: 'plugin_win', name: 'capcut-plugin-win.py', lang: 'python', content: CAPCUT_PLUGIN_WIN_PY, desc: 'Windows Local REST Plugin Server & HTTP daemon (Port 8765)' },
-  { id: 'bat_win', name: 'install-plugin-win.bat', lang: 'bat', content: INSTALL_PLUGIN_WIN_BAT, desc: 'Windows One-Click Automated Plugin & PATH Installer' },
-  { id: 'py', name: 'capcut-bridge.py', lang: 'python', content: CAPCUT_BRIDGE_PY, desc: 'Complete macOS bridge script (PEP 723, PyObjC)' },
+  { id: 'py_win', name: 'capcut-bridge-win.py', lang: 'python', content: CAPCUT_BRIDGE_WIN_PY, desc: 'Windows project-file CLI; live editor acceptance is not verified' },
+  { id: 'plugin_win', name: 'capcut-plugin-win.py', lang: 'python', content: CAPCUT_PLUGIN_WIN_PY, desc: 'Loopback-only REST service; do not expose to a network' },
+  { id: 'bat_win', name: 'install-plugin-win.bat', lang: 'bat', content: INSTALL_PLUGIN_WIN_BAT, desc: 'Deprecated setup stub; performs no installation' },
+  { id: 'py', name: 'capcut-bridge.py', lang: 'python', content: CAPCUT_BRIDGE_PY, desc: 'macOS draft CLI sample; runtime support unverified' },
   { id: 'contract', name: 'INPUT-CONTRACT.md', lang: 'markdown', content: INPUT_CONTRACT_MD, desc: 'Cuts & Graphics Plan JSON schema contract' },
   { id: 'tpl_mat', name: 'text-material.json', lang: 'json', content: TEXT_MATERIAL_JSON, desc: 'CapCut text style material stub' },
   { id: 'tpl_seg', name: 'text-segment.json', lang: 'json', content: TEXT_SEGMENT_JSON, desc: 'CapCut text segment with repaired timerange' },

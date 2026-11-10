@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { Download, Terminal, Play, Check, Copy, ExternalLink, ShieldCheck, Cpu, HardDrive, Layers, Server } from 'lucide-react';
+import { Terminal, Play, Check, Copy, Cpu, HardDrive, Server } from 'lucide-react';
 
 interface WindowsPluginGuideProps {
   onDownloadWinScript: () => void;
-  onDownloadInstaller: () => void;
   onDownloadPluginDaemon: () => void;
 }
 
 export const WindowsPluginGuide: React.FC<WindowsPluginGuideProps> = ({
   onDownloadWinScript,
-  onDownloadInstaller,
   onDownloadPluginDaemon,
 }) => {
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
@@ -65,22 +63,14 @@ export const WindowsPluginGuide: React.FC<WindowsPluginGuideProps> = ({
           <div dir="rtl">
             <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              <span>پلاگین و نصب در ویندوز (Windows Plugin & Installer)</span>
+              <span>وضعیت Bridge محلی در ویندوز (Windows Local Bridge)</span>
             </h2>
             <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-              راهنمای کامل نصب، راه‌اندازی سرور پلاگین پس‌زمینه (Local Plugin Daemon) و اتصال نرم‌افزارهای خارجی به کپکات دسکتاپ در ویندوز.
+              این ابزار پلاگین رسمی CapCut یا API تایم‌لاین زنده نیست. سرویس محلی فقط روی loopback اجرا می‌شود؛ عملیات کلیدی تأییدشدهٔ داخل CapCut را تضمین نمی‌کنند.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onDownloadInstaller}
-              className="px-3 py-1.5 text-xs font-semibold text-black bg-emerald-400 hover:bg-emerald-300 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>دانلود فایل نصب یک‌کلیک (install-plugin-win.bat)</span>
-            </button>
-          </div>
+
         </div>
 
         {/* 3 Pillar Architectural Breakdown */}
@@ -88,30 +78,30 @@ export const WindowsPluginGuide: React.FC<WindowsPluginGuideProps> = ({
           <div className="p-4 bg-neutral-950 border border-neutral-800 rounded-lg space-y-2">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold">
               <Cpu className="w-4 h-4" />
-              <span>۱. آیا کپکات پلاگین رسمی دارد؟</span>
+              <span>۱. این ابزار پلاگین رسمی CapCut است؟</span>
             </div>
             <p className="text-neutral-400 text-[11px] leading-relaxed">
-              شرکت ByteDance استور رسمی برای پلاگین ندارد؛ اما با استفاده از این کیت، کپکات از طریق دستکاری مستقیم پروژه‌ها بر روی هارد و شبیه‌سازی کلیدهای میانبر (<code className="text-neutral-200">pyautogui</code>) به صورت کامل مانند یک پلاگین حرفه‌ای کنترل‌پذیر می‌شود.
+              خیر. این پروژه API رسمی یا کنترل مستقیم تایم‌لاین باز را اثبات نمی‌کند. برخی ابزارها با پشتیبان‌گیری فایل پروژه کار می‌کنند؛ میانبرهای صفحه‌کلید نتیجهٔ داخل CapCut را تأیید نمی‌کنند.
             </p>
           </div>
 
           <div className="p-4 bg-neutral-950 border border-neutral-800 rounded-lg space-y-2">
             <div className="flex items-center gap-2 text-blue-400 font-semibold">
               <Server className="w-4 h-4" />
-              <span>۲. پلاگین سرور محلی (REST API)</span>
+              <span>۲. سرویس محلی (REST روی loopback)</span>
             </div>
             <p className="text-neutral-400 text-[11px] leading-relaxed">
-              فایل <code className="text-neutral-200">capcut-plugin-win.py</code> یک سرویس پس‌زمینه در آدرس <code className="text-emerald-400">http://127.0.0.1:8765</code> ایجاد می‌کند تا هر نرم‌افزاری (پریمیر، فتوشاپ، افزونه مرورگر یا اسکریپت) بتواند با ارسال درخواست HTTP به کپکات دستور دهد.
+              <code className="text-neutral-200">capcut-plugin-win.py</code> به <code className="text-emerald-400">127.0.0.1:8765</code> محدود است. آن را روی شبکه expose نکنید. Origin/CORS احراز هویت نیست؛ پاسخ‌ها وضعیت را گزارش می‌کنند، نه پذیرش ویرایش در CapCut.
             </p>
           </div>
 
           <div className="p-4 bg-neutral-950 border border-neutral-800 rounded-lg space-y-2">
             <div className="flex items-center gap-2 text-purple-400 font-semibold">
               <HardDrive className="w-4 h-4" />
-              <span>۳. نصب سراسری در ویندوز (CLI)</span>
+              <span>۳. وضعیت نصاب Windows x64</span>
             </div>
             <p className="text-neutral-400 text-[11px] leading-relaxed">
-              اسکریپت نصب‌کننده <code className="text-neutral-200">.bat</code> به صورت اتوماتیک پکیج‌ها را نصب کرده، پوشه پلاگین را در <code className="text-neutral-200">%USERPROFILE%\.capcut-bridge</code> می‌سازد و دستور <code className="text-emerald-400">capcut-bridge</code> را به ترمینال ویندوز اضافه می‌کند.
+              فایل <code className="text-neutral-200">Setup.exe</code> هنوز ساخته یا آزموده نشده است. راهنمای ساخت در <code className="text-emerald-400">docs/WINDOWS_INSTALLER_BUILD.md</code> است؛ build واقعی به Windows x64 نیاز دارد و نباید Administrator بخواهد.
             </p>
           </div>
         </div>
@@ -123,42 +113,44 @@ export const WindowsPluginGuide: React.FC<WindowsPluginGuideProps> = ({
         <div className="p-5 bg-neutral-900/60 border border-neutral-800 rounded-xl space-y-4">
           <h3 className="text-sm font-semibold text-white flex items-center gap-2">
             <Terminal className="w-4 h-4 text-emerald-400" />
-            <span>مراحل نصب و اجرا در ویندوز (Windows Setup)</span>
+            <span>راهنمای توسعه و اجرای محلی (نه نصاب محصول)</span>
           </h3>
 
           <div className="space-y-3 text-xs">
             {/* Step 1 */}
             <div className="p-3 bg-neutral-950 border border-neutral-800 rounded-lg space-y-1.5">
               <div className="flex items-center justify-between text-neutral-300 font-medium">
-                <span>مرحله ۱: پیش‌نیاز (نصب پایتون)</span>
-                <span className="text-[10px] text-emerald-400 font-mono">Python 3.11+</span>
+                <span>مرحله ۱: پیش‌نیاز محیط توسعه Windows x64</span>
+                <span className="text-[10px] text-emerald-400 font-mono">Python 3.11+ · Node 22.12+</span>
               </div>
               <p className="text-[11px] text-neutral-400 leading-relaxed">
-                پایتون را از سایت رسمی (python.org) نصب کنید و حتماً تیک گزینه <strong className="text-neutral-200">"Add Python to PATH"</strong> را بزنید.
+                برای اجرای فرمان‌ها به Python 3.11+ نسخهٔ ۶۴بیتی، Node.js 22.12+ و npm 10+ نیاز است. نصب را در سطح کاربر انجام دهید و برای اجرای برنامه Administrator لازم نیست.
               </p>
             </div>
 
             {/* Step 2 */}
             <div className="p-3 bg-neutral-950 border border-neutral-800 rounded-lg space-y-2">
               <div className="flex items-center justify-between text-neutral-300 font-medium">
-                <span>مرحله ۲: نصب وابستگی‌ها با یک دستور در CMD</span>
+                <span>مرحله ۲: آماده‌سازی وابستگی‌های توسعه و build</span>
                 <button
-                  onClick={() => handleCopy('pip install pyautogui pillow flask requests pywin32', 'pip')}
+                  onClick={() => handleCopy('python -m pip install -r requirements-win-build.txt', 'deps')}
                   className="text-emerald-400 hover:underline text-[11px] flex items-center gap-1 cursor-pointer"
                 >
-                  {copiedCmd === 'pip' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  <span>{copiedCmd === 'pip' ? 'کپی شد' : 'کپی دستور'}</span>
+                  {copiedCmd === 'deps' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedCmd === 'deps' ? 'کپی شد' : 'کپی دستور'}</span>
                 </button>
               </div>
-              <div className="p-2 bg-black border border-neutral-800 rounded font-mono text-emerald-400 text-[11px] select-all">
-                pip install pyautogui pillow flask requests pywin32
+              <div className="space-y-1 p-2 bg-black border border-neutral-800 rounded font-mono text-emerald-400 text-[11px] select-all">
+                <div>python -m pip install -r requirements-win-build.txt</div>
+                <div>npm ci</div>
+                <div className="text-neutral-500">برای نصب عمومی Setup.exe تولید نمی‌کند.</div>
               </div>
             </div>
 
             {/* Step 3 */}
             <div className="p-3 bg-neutral-950 border border-neutral-800 rounded-lg space-y-2">
               <div className="flex items-center justify-between text-neutral-300 font-medium">
-                <span>مرحله ۳: اجرای اسکریپت یا سرور پلاگین</span>
+                <span>مرحله ۳: اجرای ابزارهای محلی (اختیاری)</span>
                 <button
                   onClick={() => handleCopy('python capcut-bridge-win.py ls', 'run')}
                   className="text-emerald-400 hover:underline text-[11px] flex items-center gap-1 cursor-pointer"
@@ -184,15 +176,15 @@ export const WindowsPluginGuide: React.FC<WindowsPluginGuideProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
               <Server className="w-4 h-4 text-emerald-400" />
-              <span>تست واقعی API سرور پلاگین ویندوز (Local REST Tester)</span>
+              <span>تستر اختیاری سرویس loopback (Local Request Tester)</span>
             </h3>
             <span className="text-[10px] font-mono text-emerald-400 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
-              Live API · Port 8765
+              Local only · 127.0.0.1:8765
             </span>
           </div>
 
           <p className="text-xs text-neutral-400 leading-relaxed">
-            این پنل به daemon واقعی روی همین دستگاه وصل می‌شود. daemon باید اجرا باشد. برای split/export پنجره‌ی CapCut را فعال کن؛ میانبرها به برنامه‌ی foreground می‌روند و نتیجه‌ی نهایی اینجا قابل راستی‌آزمایی نیست:
+            فقط با کلیک کاربر، این پنل یک درخواست واقعی به سرویس loopback همین دستگاه می‌فرستد؛ این probe خودکار نیست. درخواست‌های split/export در صورت تأیید، میانبر را به CapCut foreground می‌فرستند؛ پاسخ، تغییر timeline یا تکمیل export را تأیید نمی‌کند. سرویس را به شبکه expose نکنید.
           </p>
 
           <div className="space-y-3">

@@ -12,10 +12,11 @@ Automated video editing for CapCut Desktop on macOS.
 
 Two Lanes:
 1. File Lane: Structural edits directly to draft JSON under
-   ~/Movies/CapCut/User Data/Projects/com.lveditor.draft/<name>/
-   (Safely quits CapCut, wipes Timelines/ cache, repairs timeranges, writes, relaunches).
-2. Live Lane: Accessibility automation via AXUIElement & Quartz CGEvents
-   targeting internal automation IDs (PlayerPlayBtn, MTLSVideoP:<clip>, etc.).
+   ~/Movies/CapCut/User Data/Projects/com.lveditor.draft/<name>/.
+   It refuses to write while CapCut is running, retains a project backup, and
+   verifies JSON readback; it never closes/relaunches CapCut or deletes its cache.
+2. Live Lane: Limited, guarded macOS keyboard/accessibility actions. Unsupported
+   actions and unverified results are reported honestly.
 
 Usage:
   uv run capcut-bridge.py <command> [options]
@@ -36,6 +37,8 @@ import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+from bridge_system.process_guard import capcut_process_running
 
 # ---------------------------------------------------------------------------
 # macOS Native Frameworks (Imported guarded for cross-env safety / inspection)
@@ -98,44 +101,12 @@ def check_macos_env():
 
 
 def is_capcut_running() -> bool:
-    """Check if CapCut desktop application is currently active."""
-    try:
-        out = subprocess.check_output(["pgrep", "-x", CAPCUT_APP_NAME], stderr=subprocess.DEVNULL)
-        return len(out.strip()) > 0
-    except subprocess.CalledProcessError:
-        return False
+    """Return CapCut's verified process state; query failures must stop the caller."""
+    return capcut_process_running(platform="darwin")
 
 
 def quit_capcut(timeout: float = 8.0) -> bool:
-    """
-    Hard Rule 1: CapCut must be fully closed before modifying drafts on disk!
-    CapCut writes its own registry on quit, clobbering external modifications.
-    """
-    if not is_capcut_running():
-        return True
-
-    print(f"[CapCut Bridge] Gracefully closing {CAPCUT_APP_NAME} to ensure safe file-lane write...")
-    try:
-        subprocess.run(
-            ["osascript", "-e", f'tell application "{CAPCUT_APP_NAME}" to quit'],
-            check=False,
-            capture_output=True,
-        )
-    except Exception:
-        pass
-
-    start = time.time()
-    while time.time() - start < timeout:
-        if not is_capcut_running():
-            time.sleep(0.5)
-            print("[CapCut Bridge] CapCut closed cleanly.")
-            return True
-        time.sleep(0.3)
-
-    # Force kill if hung
-    print("[CapCut Bridge] Process still active; sending SIGKILL...")
-    subprocess.run(["pkill", "-9", "-x", CAPCUT_APP_NAME], check=False, capture_output=True)
-    time.sleep(0.5)
+    """Compatibility helper: never send quit or kill signals to the editor."""
     return not is_capcut_running()
 
 
@@ -147,32 +118,23 @@ def launch_capcut(wait_sec: float = 2.5):
 
 
 class SafeDraftEditor:
-    """
-    Context Manager for File-Lane operations.
-    Enforces Hard Rule 1 (Quit -> Edit -> Relaunch) and wipes native Timelines/ cache (Hard Rule 3).
-    """
-    def __init__(self, draft_name: str, relaunch: bool = True):
-        self.draft_name = draft_name
+    """Guard file-lane operations without controlling the user's editor."""
+    def __init__(self, draft_name: str, relaunch: bool = False):
+        from draft_engine.reader import safe_draft_name
+        self.draft_name = safe_draft_name(draft_name)
         self.relaunch = relaunch
-        self.was_running = False
-        self.draft_dir = CAPCUT_PROJECTS_DIR / draft_name
+        self.draft_dir = CAPCUT_PROJECTS_DIR / self.draft_name
 
     def __enter__(self):
-        self.was_running = is_capcut_running()
-        if self.was_running:
-            quit_capcut()
-
-        # Hard Rule 3: Wipe native Timelines cache or edit is silently ignored!
-        timelines_cache = self.draft_dir / "Timelines"
-        if timelines_cache.exists():
-            print(f"[CapCut Bridge] Wiping native cache at {timelines_cache}...")
-            shutil.rmtree(timelines_cache, ignore_errors=True)
-
+        if is_capcut_running():
+            raise RuntimeError("CapCut is running; close it yourself before editing draft files. No process was terminated.")
+        if self.draft_dir.is_symlink() or not self.draft_dir.is_dir():
+            raise FileNotFoundError(f"Draft directory not found or unsafe: {self.draft_dir}")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None and (self.was_running or self.relaunch):
-            launch_capcut()
+        # The bridge never launches or closes CapCut implicitly.
+        return False
 
 
 def ensure_sandbox_footage(src_path: Path, draft_dir: Path) -> Path:
@@ -275,7 +237,8 @@ def load_template(name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def get_draft_path(draft_name: str) -> Path:
-    return CAPCUT_PROJECTS_DIR / draft_name
+    from draft_engine.reader import safe_draft_name
+    return CAPCUT_PROJECTS_DIR / safe_draft_name(draft_name)
 
 
 def read_draft_content(draft_dir: Path) -> Tuple[dict, Path]:
@@ -289,18 +252,43 @@ def read_draft_content(draft_dir: Path) -> Tuple[dict, Path]:
 
 
 def write_draft_content(path: Path, data: dict):
-    """Write sanitized JSON draft with repaired timeranges."""
+    """Atomically write staged JSON, or back up and update an existing project."""
+    path = Path(path)
     repaired = repair_null_timeranges(data)
     if repaired > 0:
-        print(f"[CapCut Bridge] Repaired {repaired} null source_timeranges to prevent encoder hang.")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+        print(f"[CapCut Bridge] Repaired {repaired} null source_timeranges.")
+
+    if path.is_file() and path.name in {"draft_content.json", "draft_info.json"}:
+        from draft_engine import update_existing_draft_json
+        result = update_existing_draft_json(path.parent, data)
+        if result.get("backup_dir"):
+            print(f"[CapCut Bridge] Retained project backup at {result['backup_dir']}")
+        print("[CapCut Bridge] JSON disk readback verified; CapCut acceptance remains unverified.")
+        return result
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp-{uuid.uuid4().hex}")
+    try:
+        with temporary.open("x", encoding="utf-8", newline="\n") as handle:
+            json.dump(data, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        if json.loads(path.read_text(encoding="utf-8")) != data:
+            raise RuntimeError("Draft JSON disk readback did not match the staged content")
+        return {"verified": True, "verification_scope": "draft_json_disk_readback_only", "draft_file": str(path)}
+    finally:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _safe_replay_name(name: str) -> str:
     """Accept a single portable folder name; never allow replay path traversal."""
-    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _.-]{0,79}", name) or name in {".", ".."}:
-        raise ValueError("Draft name must be a simple folder name (letters, numbers, spaces, dot, _ or -)")
+    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _().-]{0,79}", name) or name in {".", ".."}:
+        raise ValueError("Draft name must be a simple folder name (letters, numbers, spaces, parentheses, dot, _ or -)")
     return name
 
 
@@ -351,17 +339,20 @@ def cmd_replay(args):
     target_dir = CAPCUT_PROJECTS_DIR / draft_name
     overwrite = bool(getattr(args, "overwrite", False))
     confirm_name = getattr(args, "confirm_name", None)
+    if target_dir.is_symlink():
+        raise ValueError("Refusing to overwrite a draft directory that is a symbolic link.")
     if target_dir.exists() and not overwrite:
         raise FileExistsError(f"Draft already exists; refusing to overwrite: {target_dir}")
     if target_dir.exists() and confirm_name != draft_name:
         raise ValueError(f"Overwrite requires --overwrite --confirm-name {draft_name!r}")
+    if is_capcut_running():
+        raise RuntimeError("CapCut is running; close it yourself before replaying. No process was terminated.")
 
     CAPCUT_PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
     stage_dir = CAPCUT_PROJECTS_DIR / f".{draft_name}.staging-{uuid.uuid4().hex}"
     backup_dir = CAPCUT_PROJECTS_DIR / f".{draft_name}.backup-{uuid.uuid4().hex}"
-    was_running = is_capcut_running()
-    if was_running and not quit_capcut():
-        raise RuntimeError("CapCut did not close; refusing to modify draft files")
+    from draft_engine.writer import acquire_draft_write_lock
+    release_write_lock = acquire_draft_write_lock(CAPCUT_PROJECTS_DIR, draft_name)
     committed = False
     try:
         draft_dir = stage_dir
@@ -450,23 +441,27 @@ def cmd_replay(args):
             ]
         }
 
-        out_file = draft_dir / "draft_content.json"
-        write_draft_content(out_file, content)
-        # Validate staged JSON before touching the existing project.
-        with out_file.open("r", encoding="utf-8") as staged_file:
-            staged_content = json.load(staged_file)
-        if not isinstance(staged_content, dict) or not isinstance(staged_content.get("tracks"), list):
-            raise ValueError("Staged draft JSON failed validation")
-        # Media paths were written under staging; rewrite them for the final location.
-        for material in staged_content.get("materials", {}).get("videos", []):
+        # Point media paths at the final location before staging the JSON.
+        for material in content.get("materials", {}).get("videos", []):
             media = Path(material.get("path", ""))
             try:
                 rel_media = media.relative_to(stage_dir)
             except ValueError:
                 continue
-            material["path"] = str(draft_dir.parent / draft_name / rel_media)
-        with out_file.open("w", encoding="utf-8") as staged_file:
-            json.dump(staged_content, staged_file, indent=2, ensure_ascii=False)
+            material["path"] = str(target_dir / rel_media)
+
+        out_file = draft_dir / "draft_content.json"
+        write_draft_content(out_file, content)
+        with out_file.open("r", encoding="utf-8") as staged_file:
+            staged_content = json.load(staged_file)
+        from draft_engine import validate_draft_structure
+        validation = validate_draft_structure(staged_content)
+        if not validation.is_valid:
+            raise ValueError("Staged draft JSON failed structural validation: " + "; ".join(validation.errors))
+        if is_capcut_running():
+            raise RuntimeError("CapCut started during replay; refusing to replace project files.")
+        if target_dir.is_symlink():
+            raise ValueError("Draft target changed to a symbolic link during replay; refusing to continue.")
         if target_dir.exists() and not overwrite:
             raise FileExistsError(f"Draft appeared while building; refusing to overwrite: {target_dir}")
         if target_dir.exists():
@@ -477,15 +472,20 @@ def cmd_replay(args):
             if backup_dir.exists() and not target_dir.exists():
                 backup_dir.rename(target_dir)
             raise
-        print(f"[CapCut Bridge] Draft written successfully at {target_dir / 'draft_content.json'}")
+        final_content = json.loads((target_dir / "draft_content.json").read_text(encoding="utf-8"))
+        if final_content != staged_content:
+            raise RuntimeError("Final draft JSON disk readback did not match the staged content.")
+        final_validation = validate_draft_structure(final_content, check_files=True, base_dir=target_dir)
+        if not final_validation.is_valid:
+            raise RuntimeError("Final draft JSON failed structural validation: " + "; ".join(final_validation.errors))
+        print("[CapCut Bridge] Draft JSON staged and disk-readback verified. CapCut parse, timeline UI, and export remain unverified.")
         if backup_dir.exists():
-            print(f"[CapCut Bridge] Previous draft backup retained at {backup_dir}")
+            print(f"[CapCut Bridge] Previous project backup retained at {backup_dir}")
         committed = True
     finally:
         if stage_dir.exists():
-            shutil.rmtree(stage_dir)
-        if was_running or committed:
-            launch_capcut()
+            shutil.rmtree(stage_dir, ignore_errors=True)
+        release_write_lock()
 
 
 def cmd_add_overlay(args):
@@ -736,6 +736,35 @@ def cmd_clear_keyframes(args):
 # Live Lane Implementations (Accessibility Tree & Quartz CGEvents)
 # ---------------------------------------------------------------------------
 
+def is_capcut_frontmost() -> bool:
+    """Fail-closed check that the frontmost macOS application is CapCut."""
+    if sys.platform != "darwin" or not is_capcut_running():
+        return False
+    try:
+        frontmost = subprocess.check_output(
+            [
+                "osascript",
+                "-e",
+                'tell application "System Events" to get name of first application process whose frontmost is true',
+            ],
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=2.0,
+        ).strip()
+        return frontmost == CAPCUT_APP_NAME
+    except Exception:
+        return False
+
+
+def require_capcut_foreground() -> None:
+    if not MACOS_NATIVE_AVAILABLE:
+        raise RuntimeError("Live lane requires macOS Quartz/Accessibility support.")
+    if not is_capcut_running():
+        raise RuntimeError("CapCut is not running.")
+    if not is_capcut_frontmost():
+        raise RuntimeError("Bring CapCut to the foreground before sending a live keyboard or mouse event.")
+
+
 def get_capcut_ax_app():
     """Locate CapCut in the macOS Accessibility Tree."""
     if not MACOS_NATIVE_AVAILABLE:
@@ -753,7 +782,8 @@ def get_capcut_ax_app():
 
 
 def synthesize_click(x: float, y: float):
-    """Synthesize macOS hardware mouse click at screen coordinates (x, y)."""
+    """Send a mouse click only when CapCut is confirmed frontmost."""
+    require_capcut_foreground()
     pt = CGPoint(x, y)
     down = CGEventCreateMouseEvent(None, kCGEventLeftMouseDown, pt, kCGMouseButtonLeft)
     up = CGEventCreateMouseEvent(None, kCGEventLeftMouseUp, pt, kCGMouseButtonLeft)
@@ -763,7 +793,8 @@ def synthesize_click(x: float, y: float):
 
 
 def synthesize_key(key_code: int, flags: int = 0):
-    """Synthesize hardware keypress."""
+    """Send a keyboard event only when CapCut is confirmed frontmost."""
+    require_capcut_foreground()
     down = CGEventCreateKeyboardEvent(None, key_code, True)
     up = CGEventCreateKeyboardEvent(None, key_code, False)
     if flags:
@@ -799,13 +830,7 @@ def find_ax_element(element, needle: str, max_depth: int = 7) -> Optional[Any]:
 
 
 def get_element_center(element) -> Optional[Tuple[float, float]]:
-    """Retrieve screen coordinates for element center."""
-    err, pos_val = AX.AXUIElementCopyAttributeValue(element, "AXPosition", None)
-    err2, size_val = AX.AXUIElementCopyAttributeValue(element, "AXSize", None)
-    if err == 0 and err2:
-        # Convert AXValue to CGPoint / CGSize
-        # Return approximate coordinates
-        return (500.0, 400.0)
+    """Return None until AXValue position/size conversion is implemented and tested."""
     return None
 
 
@@ -814,82 +839,64 @@ def cmd_live_launch(args):
 
 
 def cmd_live_quit(args):
-    quit_capcut()
+    if is_capcut_running():
+        print("CapCut is still running; the bridge does not terminate applications. Close it manually if desired.")
+    else:
+        print("CapCut is not running.")
 
 
 def cmd_live_play(args):
-    """Toggle playback using Space key or PlayerPlayBtn test hook."""
+    """Send Space to foreground CapCut; playback change remains unverified."""
     synthesize_key(49)  # Space key
-    print("[Live Lane] Sent Play/Pause toggle.")
+    print("UNVERIFIED: Space was sent while CapCut was foreground; playback state was not read back.")
 
 
 def cmd_live_split(args):
-    """Split at current playhead or seek then split (Cmd+B)."""
+    """Send Cmd+B at the current playhead; there is no timeline readback."""
     if args.seconds is not None:
-        cmd_live_seek(argparse.Namespace(seconds=args.seconds, draft=None))
-        time.sleep(0.1)
+        raise NotImplementedError("Timed split is unsupported because deterministic seek is not implemented.")
     synthesize_key(11, kCGEventFlagMaskCommand)  # Cmd+B
-    print(f"[Live Lane] Split cut executed at playhead.")
+    print("UNVERIFIED: Cmd+B was sent while CapCut was foreground; no split state was read back.")
 
 
 def cmd_live_seek(args):
-    """Frame-exact closed-loop seek to target timestamp."""
-    print(f"[Live Lane] Seeking playhead to {args.seconds}s...")
-    # In live editor, jumps via timecode input or playhead scrub
-    print(f"[Live Lane] Playhead aligned at {args.seconds}s.")
+    """Seeking is unsupported until an editor-side timecode control and readback exist."""
+    raise NotImplementedError("Live seek is not implemented; no keyboard event was sent.")
 
 
 def cmd_live_export(args):
-    """
-    Hard Rule 6: Drive CapCut's export dialog and dismiss post-export share modal!
-    The post-export 'share to TikTok/YouTube' screen is modal and blocks subsequent actions.
-    """
-    if not is_capcut_running():
-        raise RuntimeError("CapCut is not running; refusing to send export shortcuts")
-    print("[Live Lane] Initiating export flow. Keep CapCut in the foreground; export completion is not observable.")
-    # Trigger export shortcut Cmd+E
+    """Send a guarded export shortcut sequence without claiming render completion."""
+    if getattr(args, "to", None):
+        raise NotImplementedError("A destination path is not supported by the keyboard-only export lane.")
+    require_capcut_foreground()
+    print("[Live Lane] Sending Cmd+E; export dialog state and destination are not inspected.")
     synthesize_key(14, kCGEventFlagMaskCommand)
     time.sleep(1.0)
 
-    # Click export confirmation
-    print("[Live Lane] Confirming export dialog...")
-    synthesize_key(36)  # Return key
+    require_capcut_foreground()
+    synthesize_key(36)  # Return key; dialog state is not verified.
+    time.sleep(2.0)  # Fixed delay only; not an export-progress check.
 
-    # Wait for completion & dismiss share modal
-    timeout = args.timeout or 60.0
-    start = time.time()
-    print(f"[Live Lane] Waiting {min(timeout, 2.0):.1f}s before dismissing the modal; the timeout is not a render-progress check.")
-    time.sleep(2.0)
-
-    # Clear modal share screen (Escape or click dismiss hook)
-    synthesize_key(53)  # Escape key
-    print("[Live Lane] Keyboard shortcuts sent. Export completion and output file were not verified.")
+    require_capcut_foreground()
+    synthesize_key(53)  # Escape key; modal state is not verified.
+    print("UNVERIFIED: keyboard events were sent; export completion and output file were not checked.")
 
 
 def cmd_live_shot(args):
-    """Capture CapCut window screenshot for automated QA."""
-    out_file = args.out or f"capcut_qa_{int(time.time())}.png"
-    subprocess.run(["screencapture", "-o", "-l", out_file], check=False)
-    print(f"[Live Lane] Window capture saved to {out_file}")
+    """Capture the full desktop only after confirming CapCut is foreground."""
+    require_capcut_foreground()
+    out_file = Path(args.out or f"capcut_desktop_{int(time.time())}.png").expanduser()
+    if out_file.exists():
+        raise FileExistsError(f"Refusing to overwrite screenshot: {out_file}")
+    subprocess.run(["screencapture", "-x", str(out_file)], check=True)
+    if not out_file.is_file() or out_file.stat().st_size == 0:
+        raise RuntimeError("Desktop screenshot command completed without a readable image file.")
+    print(f"Desktop screenshot saved to {out_file}; it shows the display, not an editor-side timeline state.")
 
 
 def cmd_live_dump(args):
-    """Dump accessibility tree test hooks to discover internal IDs."""
-    print(f"[Live Lane] Querying accessibility tree for '{args.needle or 'all'}'...")
-    known_hooks = [
-        "PlayerPlayBtn",
-        "PlayerTimeLabel",
-        "ExportBtn",
-        "TimelineArea",
-        "MTLSVideoP:MainTrack",
-        "SplitButton",
-        "DeleteButton",
-        "UndoButton",
-        "RedoButton",
-    ]
-    for h in known_hooks:
-        if not args.needle or args.needle.lower() in h.lower():
-            print(f" • [Hook Found] ID: {h:<28} State: Enabled")
+    """Accessibility hook enumeration is not implemented; never return fabricated hooks."""
+    raise NotImplementedError("Accessibility tree dump is not implemented; no hooks or state were reported.")
 
 
 # ---------------------------------------------------------------------------

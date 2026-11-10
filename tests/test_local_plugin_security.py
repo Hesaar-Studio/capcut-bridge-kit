@@ -16,7 +16,8 @@ class LocalPluginSecurityTests(unittest.TestCase):
         self.client = PLUGIN.app.test_client()
 
     def test_allows_configured_local_ui_origin(self):
-        response = self.client.get("/api/v1/status", headers={"Origin": "http://127.0.0.1:3000"})
+        with patch.object(PLUGIN, "is_capcut_running", return_value=False):
+            response = self.client.get("/api/v1/status", headers={"Origin": "http://127.0.0.1:3000"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "http://127.0.0.1:3000")
 
@@ -33,8 +34,26 @@ class LocalPluginSecurityTests(unittest.TestCase):
         fake_pyautogui = SimpleNamespace(hotkey=lambda *_args: self.fail("hotkey must not be sent"))
         with patch.object(PLUGIN, "is_capcut_running", return_value=False), patch.dict(sys.modules, {"pyautogui": fake_pyautogui}):
             response = self.client.post("/api/v1/split")
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 409)
         self.assertIn("not currently open", response.get_json()["error"])
+
+    def test_status_reports_unknown_process_state_as_null_not_false(self):
+        with patch.object(PLUGIN, "is_capcut_running", side_effect=PLUGIN.ProcessStateUnknown("probe unavailable")):
+            response = self.client.get("/api/v1/status")
+        self.assertEqual(response.status_code, 200)
+        status = response.get_json()
+        self.assertIsNone(status["running"])
+        self.assertIsNone(status["foreground"])
+        self.assertEqual(status["process_check"], "unknown")
+
+    def test_live_action_stops_on_unknown_process_state_without_hotkey(self):
+        fake_pyautogui = SimpleNamespace(hotkey=lambda *_args: self.fail("hotkey must not be sent"))
+        with patch.object(PLUGIN, "is_capcut_running", side_effect=PLUGIN.ProcessStateUnknown("probe unavailable")), \
+             patch.dict(sys.modules, {"pyautogui": fake_pyautogui}):
+            response = self.client.post("/api/v1/split")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json()["status"], "not_sent")
+        self.assertFalse(response.get_json()["verified"])
 
 
 if __name__ == "__main__":

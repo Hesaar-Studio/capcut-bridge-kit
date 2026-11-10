@@ -192,38 +192,24 @@ export const SAMPLE_GRAPHICS_PLAN_JSON = `{
 }`;
 
 export const INSTALL_PLUGIN_WIN_BAT = `@echo off
-TITLE CapCut Bridge Kit - Windows Plugin Installer
-color 0A
+setlocal
+TITLE CapCut Bridge Kit - Legacy Setup Disabled
+color 0E
 
-echo =======================================================
-echo   CapCut Bridge Kit - Windows Plugin & CLI Installer
-echo =======================================================
+echo =============================================================
+echo   Legacy install-plugin-win.bat is disabled
+echo =============================================================
 echo.
-
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Python is not installed or not in PATH!
-    pause
-    exit /b 1
-)
-
-echo [1/4] Installing required packages (pyautogui, pillow, flask, requests)...
-pip install pyautogui pillow flask requests pywin32
-
-set INSTALL_DIR=%USERPROFILE%\\.capcut-bridge
-if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
-
-copy /Y "capcut-bridge-win.py" "%INSTALL_DIR%\\capcut-bridge.py" >nul
-copy /Y "capcut-plugin-win.py" "%INSTALL_DIR%\\capcut-plugin.py" >nul
-
-echo @echo off > "%INSTALL_DIR%\\capcut-bridge.bat"
-echo python "%INSTALL_DIR%\\capcut-bridge.py" %%* >> "%INSTALL_DIR%\\capcut-bridge.bat"
-
-powershell -Command "[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'User') + ';%INSTALL_DIR%', 'User')" >nul 2>&1
-
+echo This legacy helper is not the packaged Windows installer.
+echo It previously changed the user PATH and created a persistent
+echo plugin-daemon shortcut. It no longer performs those actions.
 echo.
-echo [SUCCESS] CapCut Bridge installed to %INSTALL_DIR%!
-echo Run 'capcut-bridge ls' in any command prompt.
+echo The Windows Setup.exe has not been built in this source package.
+echo For current build steps, see docs\\WINDOWS_INSTALLER_BUILD.md.
+echo.
+echo No files, PATH values, services, or CapCut processes were changed.
+echo.
 pause
+exit /b 1
 `;
 

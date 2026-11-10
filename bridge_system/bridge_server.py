@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HS.Tech Video Bridge Server (Hesa Art Tech) - v2.4.0
+HS.Tech Video Bridge Server (Hesa Art Tech)
 Dual Mode:
   1. REST sample API server on http://127.0.0.1:8766
   2. Model Context Protocol (MCP) Stdio JSON-RPC server for Claude Desktop, Cursor, Codex, Open-source LLMs
@@ -13,32 +13,68 @@ Multi-NLE Support:
 
 import sys
 import os
-import re
 import json
-import math
 import argparse
 import subprocess
 import tempfile
 from urllib.parse import urlsplit
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+import contextlib
+import io
+import runpy
+
+# When run directly from the repository, add the project root so shared modules resolve.
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+from bridge_system.versioning import APP_VERSION
+from bridge_system.process_guard import capcut_process_running
+from draft_engine.reader import safe_draft_name
+from ai_contract.dispatcher import ContractDispatcher
+
+CONTRACT_MCP_TOOLS = {
+    "bridge_contract_get_capabilities": ("get_capabilities", {"type": "object", "properties": {}, "additionalProperties": False}),
+    "bridge_contract_get_capcut_surface_map": ("get_capcut_surface_map", {"type": "object", "properties": {}, "additionalProperties": False}),
+    "bridge_contract_list_projects": ("list_projects", {"type": "object", "properties": {}, "additionalProperties": False}),
+    "bridge_contract_inspect_project": ("inspect_project", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}}, "required": ["project_name"], "additionalProperties": False}),
+    "bridge_contract_inspect_timeline": ("inspect_timeline", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}}, "required": ["project_name"], "additionalProperties": False}),
+    "bridge_contract_inspect_media": ("inspect_media", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "check_files": {"type": "boolean"}}, "required": ["project_name"], "additionalProperties": False}),
+    "bridge_contract_inspect_subtitles": ("inspect_subtitles", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}}, "required": ["project_name"], "additionalProperties": False}),
+    "bridge_contract_analyze_gaps": ("analyze_gaps", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "min_gap_sec": {"type": "number", "minimum": 0, "maximum": 3600}}, "required": ["project_name"], "additionalProperties": False}),
+    "bridge_contract_analyze_duplicates": ("analyze_duplicates", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "max_time_distance_sec": {"type": "number", "minimum": 0, "maximum": 86400}, "high_threshold": {"type": "number", "minimum": 0, "maximum": 1}, "possible_threshold": {"type": "number", "minimum": 0, "maximum": 1}}, "required": ["project_name"], "additionalProperties": False}),
+    "bridge_contract_create_edit_plan": ("create_edit_plan", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "min_pause_gap_sec": {"type": "number", "minimum": 0, "maximum": 3600}, "max_duplicate_distance_sec": {"type": "number", "minimum": 0, "maximum": 86400}}, "required": ["project_name"], "additionalProperties": False}),
+    "bridge_contract_validate_edit_plan": ("validate_edit_plan", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "plan": {"type": "object"}}, "required": ["project_name", "plan"], "additionalProperties": False}),
+    "bridge_contract_preview_edit_plan": ("preview_edit_plan", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "plan": {"type": "object"}, "min_pause_gap_sec": {"type": "number", "minimum": 0, "maximum": 3600}}, "required": ["project_name"], "additionalProperties": False}),
+    "bridge_contract_execute_edit_plan": ("execute_edit_plan", {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "plan": {"type": "object"}, "confirm_token": {"type": "string"}}, "required": ["project_name", "plan", "confirm_token"], "additionalProperties": False}),
+    "bridge_contract_verify_execution": ("verify_execution", {"type": "object", "properties": {"execution_id": {"type": "string", "minLength": 1}}, "required": ["execution_id"], "additionalProperties": False}),
+    "bridge_contract_get_execution_receipt": ("get_execution_receipt", {"type": "object", "properties": {"execution_id": {"type": "string", "minLength": 1}}, "required": ["execution_id"], "additionalProperties": False}),
+}
+
 
 # Standard MCP JSON-RPC protocol helper
 def run_mcp_stdio():
-    """Stdio JSON-RPC server for Claude Desktop, Cursor, and MCP clients"""
-    sys.stderr.write("[HS.Tech Bridge] Starting MCP Stdio Server (hs-art-tech-bridge v2.4.0)...\n")
+    """Stdio JSON-RPC server for MCP clients and provider-neutral contract tools."""
+    contract_dispatcher = ContractDispatcher()
+    sys.stderr.write(f"[HS.Tech Bridge] Starting MCP Stdio Server (hs-art-tech-bridge v{APP_VERSION})...\n")
     sys.stderr.flush()
 
     tools_definitions = [
         {"name": "capcut_status", "description": "Read-only local CapCut process and project-folder check. Does not imply live editor control.", "inputSchema": {"type": "object", "properties": {}}},
         {"name": "list_capcut_projects", "description": "List CapCut draft folders for the current operating-system account.", "inputSchema": {"type": "object", "properties": {}}},
         {"name": "inspect_capcut_timeline", "description": "Read-only summary of a CapCut draft timeline from its on-disk draft JSON.", "inputSchema": {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}}, "required": ["project_name"], "additionalProperties": False}},
-        {"name": "capcut_live_split", "description": "Send the split shortcut to the foreground CapCut timeline.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-        {"name": "capcut_live_export", "description": "Start export in the foreground CapCut timeline.", "inputSchema": {"type": "object", "properties": {"output_path": {"type": "string"}}, "additionalProperties": False}},
-        {"name": "create_capcut_draft", "description": "Create a new draft from local video cuts. Existing projects are never overwritten. Returns verified on-disk timeline and media readback, or an error if the result does not match the request. The current CLI may close and relaunch CapCut while writing the project.", "inputSchema": {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "cuts": {"type": "array", "minItems": 1, "maxItems": 500, "items": {"type": "object", "properties": {"source_path": {"type": "string"}, "start": {"type": "number", "minimum": 0}, "duration": {"type": "number", "exclusiveMinimum": 0}}, "required": ["source_path", "start", "duration"], "additionalProperties": False}}}, "required": ["project_name", "cuts"], "additionalProperties": False}},
-        {"name": "add_capcut_text", "description": "Add a text segment to an existing CapCut draft through the bridge CLI. The current CLI may close and relaunch CapCut while writing the project.", "inputSchema": {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "text": {"type": "string", "minLength": 1, "maxLength": 2000}, "at": {"type": "number", "minimum": 0}, "duration": {"type": "number", "exclusiveMinimum": 0}}, "required": ["project_name", "text", "at"], "additionalProperties": False}}
+        {"name": "capcut_live_split", "description": "Send the split shortcut only when CapCut is the foreground application. Completion is not verified.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
+        {"name": "capcut_live_play", "description": "Toggle CapCut playback only when CapCut is the foreground application. Completion is not verified.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
+        {"name": "capcut_live_export", "description": "Send a keyboard-only export shortcut sequence to foreground CapCut. Dialog state, destination, render completion, and output-file existence are not checked; custom output paths are unsupported.", "inputSchema": {"type": "object", "properties": {"output_path": {"type": "string", "description": "Unsupported; this bridge cannot set or verify a custom export destination."}}, "additionalProperties": False}},
+        {"name": "create_capcut_draft", "description": "Create a new draft from local video cuts. Existing projects are never overwritten unless the CLI is explicitly invoked with matching overwrite confirmation (not exposed here). Returns verified JSON and media readback; this does not prove CapCut loaded or rendered the draft. The operation refuses to run while CapCut is open and never closes or launches it.", "inputSchema": {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "cuts": {"type": "array", "minItems": 1, "maxItems": 500, "items": {"type": "object", "properties": {"source_path": {"type": "string"}, "start": {"type": "number", "minimum": 0}, "duration": {"type": "number", "exclusiveMinimum": 0}}, "required": ["source_path", "start", "duration"], "additionalProperties": False}}}, "required": ["project_name", "cuts"], "additionalProperties": False}},
+        {"name": "add_capcut_text", "description": "Add a text segment to an existing CapCut draft's on-disk JSON through the bridge CLI. The operation refuses to run while CapCut is open, retains a full project backup, and verifies JSON readback; it does not prove CapCut loaded the change.", "inputSchema": {"type": "object", "properties": {"project_name": {"type": "string", "minLength": 1, "maxLength": 80}, "text": {"type": "string", "minLength": 1, "maxLength": 2000}, "at": {"type": "number", "minimum": 0}, "duration": {"type": "number", "exclusiveMinimum": 0}}, "required": ["project_name", "text", "at"], "additionalProperties": False}}
     ]
+    for tool_name, (operation, schema) in CONTRACT_MCP_TOOLS.items():
+        capability = contract_dispatcher.registry.get_tool(operation)
+        description = capability.description if capability else f"Contract operation '{operation}'."
+        if capability and capability.status.value != "available":
+            description = f"UNAVAILABLE: {description}"
+        tools_definitions.append({"name": tool_name, "description": description, "inputSchema": schema})
 
     while True:
         try:
@@ -62,7 +98,7 @@ def run_mcp_stdio():
                         "capabilities": {"tools": {"listChanged": False}},
                         "serverInfo": {
                             "name": "hs-art-tech-bridge",
-                            "version": "2.4.0"
+                            "version": APP_VERSION
                         }
                     }
                 }
@@ -86,9 +122,12 @@ def run_mcp_stdio():
                     value = {"platform": sys.platform, "projects_path": str(projects_dir), "projects_path_exists": projects_dir.is_dir(), "editor_running": _capcut_running(), "connection": "local_process_and_filesystem_check_only"}
                     response = _mcp_result(req_id, json.dumps(value, ensure_ascii=False, indent=2))
                 elif tool_name == "list_capcut_projects":
-                    projects_dir = _capcut_projects_dir()
-                    names = sorted(p.name for p in projects_dir.iterdir() if p.is_dir() and not p.name.startswith(".")) if projects_dir.is_dir() else []
-                    response = _mcp_result(req_id, json.dumps({"projects": names, "count": len(names)}, ensure_ascii=False, indent=2))
+                    contract_response = contract_dispatcher.dispatch({"operation": "list_projects", "parameters": {}})
+                    if not contract_response.success:
+                        response = _mcp_result(req_id, json.dumps(contract_response.to_dict(), ensure_ascii=False), True)
+                    else:
+                        names = [item["name"] for item in contract_response.data["projects"]]
+                        response = _mcp_result(req_id, json.dumps({"projects": names, "count": len(names)}, ensure_ascii=False, indent=2))
                 elif tool_name == "inspect_capcut_timeline":
                     project = _safe_project_name(args.get("project_name"))
                     response = _mcp_result(req_id, json.dumps(_read_timeline_summary(project), ensure_ascii=False, indent=2))
@@ -96,6 +135,10 @@ def run_mcp_stdio():
                     if not _capcut_running():
                         raise RuntimeError("CapCut is not running")
                     response = _mcp_result(req_id, _run_bridge(["split"]))
+                elif tool_name == "capcut_live_play":
+                    if not _capcut_running():
+                        raise RuntimeError("CapCut is not running")
+                    response = _mcp_result(req_id, _run_bridge(["play"]))
                 elif tool_name == "capcut_live_export":
                     if not _capcut_running():
                         raise RuntimeError("CapCut is not running")
@@ -141,6 +184,18 @@ def run_mcp_stdio():
                         "message": result,
                         "readback": verification,
                     }, ensure_ascii=False))
+                elif tool_name in CONTRACT_MCP_TOOLS:
+                    if not isinstance(args, dict):
+                        raise ValueError("Contract tool arguments must be an object")
+                    if "projects_dir" in args:
+                        raise ValueError("MCP contract tools use the current account's CapCut projects directory only")
+                    operation, _schema = CONTRACT_MCP_TOOLS[tool_name]
+                    contract_response = contract_dispatcher.dispatch({"operation": operation, "parameters": args})
+                    response = _mcp_result(
+                        req_id,
+                        json.dumps(contract_response.to_dict(), ensure_ascii=False),
+                        is_error=not contract_response.success,
+                    )
                 else:
                     response = _mcp_result(req_id, f"Unknown tool: {tool_name}", True)
             else:
@@ -175,21 +230,14 @@ def _capcut_projects_dir():
     return base / "CapCut" / "User Data" / "Projects" / "com.lveditor.draft"
 
 
-def _capcut_running():
-    try:
-        if sys.platform == "win32":
-            result = subprocess.run(["powershell", "-NoProfile", "-Command", "if (Get-Process -Name CapCut -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"], capture_output=True, text=True, timeout=5)
-            return result.returncode == 0
-        result = subprocess.run(["pgrep", "-fi", "CapCut"], capture_output=True, text=True, timeout=5)
-        return result.returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        return False
+def _capcut_running() -> bool:
+    """Return a verified process state or propagate an indeterminate-state error."""
+    return capcut_process_running(platform=sys.platform)
 
 
 def _safe_project_name(name):
-    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _().-]{0,79}", name) or name in {".", ".."}:
-        raise ValueError("project_name must be a simple folder name (letters, numbers, spaces, dot, _ or -)")
-    return name
+    """Use the draft engine's shared filesystem-safe project-name policy."""
+    return safe_draft_name(name)
 
 
 def _read_timeline_summary(project_name):
@@ -212,11 +260,46 @@ def _read_timeline_summary(project_name):
             "segments_count": len(segments) if isinstance(segments, list) else 0,
             "segments": segments if isinstance(segments, list) else [],
         })
+    raw_duration = content.get("duration")
+    try:
+        duration_us = int(raw_duration) if raw_duration is not None else 0
+    except (TypeError, ValueError, OverflowError):
+        duration_us = 0
+    materials = content.get("materials", {})
+    media = []
+    media_counts = {"video": 0, "audio": 0}
+    if isinstance(materials, dict):
+        for collection_name, media_type in (("videos", "video"), ("audios", "audio")):
+            collection = materials.get(collection_name, [])
+            if not isinstance(collection, list):
+                continue
+            for item in collection:
+                if not isinstance(item, dict):
+                    continue
+                media_path = item.get("path") if isinstance(item.get("path"), str) else ""
+                media_path_obj = Path(media_path).expanduser() if media_path else None
+                if media_path_obj is not None and not media_path_obj.is_absolute():
+                    media_path_obj = draft_dir / media_path_obj
+                media_counts[media_type] += 1
+                media.append({
+                    "id": item.get("id"),
+                    "type": media_type,
+                    "name": item.get("material_name") or (Path(media_path).name if media_path else "Unknown media"),
+                    "path": media_path,
+                    "duration_us": item.get("duration"),
+                    "exists_on_disk": media_path_obj.is_file() if media_path_obj is not None else False,
+                })
+    total_segments = sum(track["segments_count"] for track in summary)
     return {
         "project_name": project_name,
         "source": str(content_path),
-        "duration": content.get("duration"),
+        "duration": duration_us,
+        "duration_seconds": round(duration_us / 1_000_000, 3),
         "tracks_count": len(summary),
+        "segments_count": total_segments,
+        "media_count": media_counts["video"] + media_counts["audio"],
+        "media_counts": media_counts,
+        "media": media,
         "tracks": summary,
         "read_only": True,
     }
@@ -323,9 +406,33 @@ def _verify_capcut_text(project_name, text, at_seconds, duration_seconds):
 
 
 def _run_bridge(args):
-    script = Path(__file__).resolve().parents[1] / ("capcut-bridge-win.py" if sys.platform == "win32" else "capcut-bridge.py")
+    script_name = "capcut-bridge-win.py" if sys.platform == "win32" else "capcut-bridge.py"
+    script_root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
+    script = script_root / script_name
     if not script.is_file():
-        raise FileNotFoundError(f"Bridge CLI not found: {script}")
+        raise FileNotFoundError(f"Bridge CLI not found in the application runtime: {script.name}")
+
+    if getattr(sys, "frozen", False):
+        # Reuse the packaged Python runtime instead of shelling out to a developer/system
+        # Python installation. stdout is captured so the MCP JSON-RPC stream stays clean.
+        old_argv = sys.argv[:]
+        output = io.StringIO()
+        error_output = io.StringIO()
+        try:
+            sys.argv = [str(script), *args]
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error_output):
+                runpy.run_path(str(script), run_name="__main__")
+        except SystemExit as exc:
+            if exc.code not in (None, 0):
+                detail = error_output.getvalue() or output.getvalue() or "Bridge command failed"
+                raise RuntimeError(detail.strip()) from exc
+        except Exception as exc:
+            detail = error_output.getvalue() or output.getvalue() or str(exc)
+            raise RuntimeError(detail.strip()) from exc
+        finally:
+            sys.argv = old_argv
+        return (output.getvalue() or "Command completed.").strip()
+
     try:
         result = subprocess.run([sys.executable, str(script), *args], capture_output=True, text=True, timeout=300)
     except subprocess.TimeoutExpired as exc:
@@ -426,7 +533,7 @@ def start_http_server(port: int = 8766):
                 resp = {
                     "brand": "HS.Tech Video Bridge (Hesa Art Tech)",
                     "slug": "hs-art-tech-bridge",
-                    "version": "2.4.0",
+                    "version": APP_VERSION,
                     "status": "sample",
                     "nles": [],
                     "connection": "health_only_no_nle_adapter",

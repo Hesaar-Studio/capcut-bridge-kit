@@ -21,14 +21,17 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import tempfile
 import subprocess
 import sys
 from pathlib import Path
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException
+from urllib.parse import urlsplit
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+from draft_engine.reader import safe_draft_name
 
 app = FastAPI(
     title="CapCut Bridge ChatGPT API",
@@ -40,67 +43,114 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 BRIDGE_SCRIPT = "capcut-bridge-win.py" if sys.platform == "win32" else "capcut-bridge.py"
 
 
-def run_bridge_command(args: list[str]) -> dict:
-    """Executes capcut-bridge CLI and returns stdout."""
-    script_path = SCRIPT_DIR / BRIDGE_SCRIPT
-    cmd = ["uv", "run", str(script_path)] + args
+def _is_loopback_host(host_header: str) -> bool:
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return {"status": "success", "stdout": res.stdout.strip(), "command": " ".join(cmd)}
-    except subprocess.CalledProcessError as e:
+        hostname = urlsplit(f"//{host_header}").hostname
+        return hostname is not None and hostname.lower() in {"localhost", "127.0.0.1", "::1"}
+    except ValueError:
+        return False
+
+
+@app.middleware("http")
+async def local_origin_guard(request: Request, call_next):
+    host_header = request.headers.get("host", "")
+    if not _is_loopback_host(host_header):
+        return JSONResponse(status_code=403, content={"error": "This local API accepts loopback hosts only."})
+    if request.method not in {"GET", "HEAD", "OPTIONS"}:
+        origin_header = request.headers.get("origin")
+        if origin_header:
+            try:
+                origin = urlsplit(origin_header)
+                if origin.scheme not in {"http", "https"} or origin.netloc.lower() != host_header.lower():
+                    return JSONResponse(status_code=403, content={"error": "Cross-origin API requests are not allowed."})
+            except ValueError:
+                return JSONResponse(status_code=403, content={"error": "Invalid request origin."})
+    return await call_next(request)
+
+
+def _require_project_name(value: str) -> str:
+    try:
+        return safe_draft_name(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def run_bridge_command(args: list[str]) -> dict:
+    """Execute the fixed local CLI without a shell; exit code alone is not NLE verification."""
+    script_path = SCRIPT_DIR / BRIDGE_SCRIPT
+    uv_command = ["uv", "run", str(script_path), *args]
+    try:
+        res = subprocess.run(uv_command, capture_output=True, text=True, timeout=300)
+    except FileNotFoundError:
+        # Compatibility fallback if uv is not installed. Still invoke only this fixed script.
+        direct_command = [sys.executable, str(script_path), *args]
+        try:
+            res = subprocess.run(direct_command, capture_output=True, text=True, timeout=300)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise HTTPException(status_code=500, detail={"error": "Bridge command could not be started or timed out."}) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise HTTPException(status_code=504, detail={"error": "Bridge command timed out."}) from exc
+
+    if res.returncode != 0:
         raise HTTPException(
             status_code=500,
-            detail={"error": str(e), "stderr": e.stderr, "stdout": e.stdout},
+            detail={
+                "error": "Bridge command exited unsuccessfully.",
+                "stderr": (res.stderr or "")[-4000:],
+                "stdout": (res.stdout or "")[-4000:],
+            },
         )
-    except FileNotFoundError:
-        # Fallback if uv is not in path, try direct python
-        cmd = [sys.executable, str(script_path)] + args
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        return {"status": "success", "stdout": res.stdout.strip(), "command": " ".join(cmd)}
+    return {
+        "status": "command_completed_unverified",
+        "verified": False,
+        "verification_scope": "cli_exit_only",
+        "stdout": (res.stdout or "").strip(),
+    }
 
 
 # Request Models
 class ReplayCut(BaseModel):
-    source_path: str = Field(..., description="Path to video file under ~/Movies")
-    start: float = Field(0.0, description="Start in seconds")
-    duration: float = Field(3.0, description="Cut duration in seconds")
+    source_path: str = Field(..., min_length=1, max_length=2048, description="Local video file path")
+    start: float = Field(0.0, ge=0, allow_inf_nan=False, description="Start in seconds")
+    duration: float = Field(3.0, gt=0, allow_inf_nan=False, description="Cut duration in seconds")
 
 class ReplayRequest(BaseModel):
     draft_name: str = Field(..., min_length=1, max_length=80, description="Target CapCut draft project name")
-    cuts: List[ReplayCut] = Field(..., description="List of video cuts")
+    cuts: List[ReplayCut] = Field(..., min_length=1, max_length=500, description="List of video cuts")
 
 class AddTextRequest(BaseModel):
-    draft_name: str
-    text: str = Field(..., description="Caption or hook text")
-    at: float = Field(..., description="Timeline position in seconds")
-    duration: float = Field(3.0, description="Duration in seconds")
+    draft_name: str = Field(..., min_length=1, max_length=80)
+    text: str = Field(..., min_length=1, max_length=2000, description="Caption or hook text")
+    at: float = Field(..., ge=0, allow_inf_nan=False, description="Timeline position in seconds")
+    duration: float = Field(3.0, gt=0, le=3600, allow_inf_nan=False, description="Duration in seconds")
 
 class AddOverlayRequest(BaseModel):
-    draft_name: str
-    media_path: str = Field(..., description="Path to overlay media")
-    at: float = Field(..., description="Timeline position in seconds")
-    duration: float = Field(3.0, description="Duration in seconds")
+    draft_name: str = Field(..., min_length=1, max_length=80)
+    media_path: str = Field(..., min_length=1, max_length=2048, description="Path to overlay media")
+    at: float = Field(..., ge=0, allow_inf_nan=False, description="Timeline position in seconds")
+    duration: float = Field(3.0, gt=0, le=3600, allow_inf_nan=False, description="Duration in seconds")
     mute: bool = Field(True, description="Whether to mute overlay audio")
 
 class SeekRequest(BaseModel):
-    seconds: float = Field(..., description="Target timestamp in seconds")
+    seconds: float = Field(..., ge=0, allow_inf_nan=False, description="Unsupported target timestamp")
 
 class SplitRequest(BaseModel):
-    seconds: Optional[float] = Field(None, description="Optional cut timestamp")
+    seconds: Optional[float] = Field(None, ge=0, allow_inf_nan=False, description="Timestamped split is unsupported")
 
 class ExportRequest(BaseModel):
-    output_dir: Optional[str] = Field(None, description="Destination folder")
-    timeout: float = Field(90.0, description="Max export wait time")
+    output_dir: Optional[str] = Field(None, max_length=2048, description="Unsupported: choose a destination in CapCut")
+    timeout: float = Field(90.0, gt=0, le=3600, allow_inf_nan=False, description="Not an export-progress guarantee")
 
 
 # Endpoints for ChatGPT
 @app.get("/")
 def root():
     return {
-        "status": "online",
+        "service_status": "running",
         "service": "CapCut Bridge ChatGPT API",
         "platform": sys.platform,
         "bridge_script": BRIDGE_SCRIPT,
+        "editor_status": "not_checked",
     }
 
 
@@ -113,37 +163,45 @@ def list_drafts():
 @app.post("/draft/replay")
 def replay_project(req: ReplayRequest):
     """Creates a new draft only; existing projects are never overwritten over REST."""
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _.-]{0,79}", req.draft_name) or req.draft_name in {".", ".."}:
-        raise HTTPException(status_code=422, detail="draft_name must be a simple folder name")
+    draft_name = _require_project_name(req.draft_name)
     projects_dir = (
         Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "CapCut" / "User Data" / "Projects" / "com.lveditor.draft"
         if sys.platform == "win32" else Path.home() / "Movies" / "CapCut" / "User Data" / "Projects" / "com.lveditor.draft"
     )
-    if (projects_dir / req.draft_name).exists():
+    if (projects_dir / draft_name).exists() or (projects_dir / draft_name).is_symlink():
         raise HTTPException(status_code=409, detail="Draft already exists; refusing to overwrite it")
+    normalized_cuts = []
+    for cut in req.cuts:
+        media_path = Path(cut.source_path).expanduser().resolve()
+        if not media_path.is_file():
+            raise HTTPException(status_code=422, detail=f"Local media file not found: {media_path.name}")
+        normalized_cuts.append({"source_path": str(media_path), "start": cut.start, "duration": cut.duration})
     fd, temp_path = tempfile.mkstemp(prefix="capcut-cuts-", suffix=".json")
     os.close(fd)
     temp_cuts_file = Path(temp_path)
     data = {
-        "draft_name": req.draft_name,
+        "draft_name": draft_name,
         "resolution": {"width": 1080, "height": 1920, "ratio": "9:16"},
         "fps": 30.0,
-        "cuts": [c.model_dump() for c in req.cuts],
+        "cuts": normalized_cuts,
     }
     with open(temp_cuts_file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
     try:
-        return run_bridge_command(["replay", str(temp_cuts_file), "--name", req.draft_name])
+        return run_bridge_command(["replay", str(temp_cuts_file), "--name", draft_name])
     finally:
         temp_cuts_file.unlink(missing_ok=True)
 
 
 @app.post("/draft/add_text")
 def add_text_caption(req: AddTextRequest):
-    """Adds a styled text subtitle or hook card."""
+    """Update draft JSON with text; CapCut acceptance is not verified."""
+    draft_name = _require_project_name(req.draft_name)
+    if not req.text.strip():
+        raise HTTPException(status_code=422, detail="Text must not be blank.")
     return run_bridge_command([
-        "add-text", req.draft_name, req.text,
+        "add-text", draft_name, req.text.strip(),
         "--at", str(req.at),
         "--dur", str(req.duration),
     ])
@@ -151,9 +209,13 @@ def add_text_caption(req: AddTextRequest):
 
 @app.post("/draft/add_overlay")
 def add_video_overlay(req: AddOverlayRequest):
-    """Inserts a B-roll or picture-in-picture overlay."""
+    """Update draft JSON with an overlay reference; CapCut acceptance is not verified."""
+    draft_name = _require_project_name(req.draft_name)
+    media_path = Path(req.media_path).expanduser().resolve()
+    if not media_path.is_file():
+        raise HTTPException(status_code=422, detail=f"Local overlay file not found: {media_path.name}")
     args = [
-        "add-overlay", req.draft_name, req.media_path,
+        "add-overlay", draft_name, str(media_path),
         "--at", str(req.at),
         "--dur", str(req.duration),
     ]
@@ -164,26 +226,24 @@ def add_video_overlay(req: AddOverlayRequest):
 
 @app.post("/live/seek")
 def seek_playhead(req: SeekRequest):
-    """Frame-exact playhead positioning in active editor."""
-    return run_bridge_command(["seek", str(req.seconds)])
+    """Seeking is not implemented; no keyboard event is sent."""
+    raise HTTPException(status_code=501, detail="Live seek is not implemented; no action was performed.")
 
 
 @app.post("/live/split")
 def split_cut(req: SplitRequest):
-    """Splits clip at playhead or specified timestamp."""
-    args = ["split"]
+    """A current-playhead shortcut can be sent; timestamped split is unsupported."""
     if req.seconds is not None:
-        args.append(str(req.seconds))
-    return run_bridge_command(args)
+        raise HTTPException(status_code=501, detail="Timed split is unsupported; no action was performed.")
+    return run_bridge_command(["split"])
 
 
 @app.post("/live/export")
 def trigger_export(req: ExportRequest):
-    """Drives export dialog, encodes video, and clears post-export modal."""
-    args = ["export", "--timeout", str(req.timeout)]
+    """Send guarded keyboard events; render completion and output are not verified."""
     if req.output_dir:
-        args.extend(["--to", req.output_dir])
-    return run_bridge_command(args)
+        raise HTTPException(status_code=501, detail="Custom export destinations are unsupported; no action was performed.")
+    return run_bridge_command(["export"])
 
 
 if __name__ == "__main__":

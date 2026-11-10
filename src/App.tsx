@@ -14,12 +14,12 @@ import { AiHubStudio } from './components/AiHubStudio';
 import {
   CAPCUT_BRIDGE_PY,
   CAPCUT_BRIDGE_WIN_PY,
-  INSTALL_PLUGIN_WIN_BAT,
   CAPCUT_PLUGIN_WIN_PY,
 } from './data/bridgeSource';
 import { Platform } from './types';
 import { EditingPrompt } from './data/editingPrompts';
 import { Dashboard } from './components/Dashboard';
+import { AgentPipelinePanel } from './components/AgentPipelinePanel';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -74,13 +74,14 @@ export default function App() {
           />
         )}
         {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab} />}
+        {activeTab === 'agent' && <AgentPipelinePanel />}
         {activeTab === 'bridge' && (
           <BridgeStudioPanel
             platform={platform}
             onDownloadZip={() => {
               const a = document.createElement('a');
               a.href = '/hs-art-tech-bridge.zip';
-              a.download = 'hs-art-tech-bridge-v2.4.zip';
+              a.download = 'HS-Tech-CapCut-Bridge-Source.zip';
               document.body.appendChild(a);
               a.click();
               document.body.removeChild(a);
@@ -107,7 +108,6 @@ export default function App() {
         {activeTab === 'plugin' && (
           <WindowsPluginGuide
             onDownloadWinScript={() => handleDownloadFile(CAPCUT_BRIDGE_WIN_PY, 'capcut-bridge-win.py', 'text/x-python;charset=utf-8')}
-            onDownloadInstaller={() => handleDownloadFile(INSTALL_PLUGIN_WIN_BAT, 'install-plugin-win.bat', 'application/x-bat')}
             onDownloadPluginDaemon={() => handleDownloadFile(CAPCUT_PLUGIN_WIN_PY, 'capcut-plugin-win.py', 'text/x-python;charset=utf-8')}
           />
         )}
@@ -128,7 +128,7 @@ export default function App() {
         <div className="flex items-center gap-4 text-neutral-400">
           <span>MCP Protocol (Stdio JSON-RPC)</span>
           <span>·</span>
-          <span>REST API: Port 8765</span>
+          <span>REST API: 127.0.0.1:8765 (local only)</span>
         </div>
       </footer>
     </div>

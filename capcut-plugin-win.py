@@ -16,12 +16,18 @@ import json
 import ctypes
 from ctypes import wintypes
 import os
-import subprocess
 import sys
 import time
 from pathlib import Path
 from urllib.parse import urlsplit
 from flask import Flask, request, jsonify
+
+from bridge_system.process_guard import ProcessStateUnknown, capcut_process_running
+
+try:
+    from bridge_system.versioning import APP_VERSION
+except ImportError:
+    APP_VERSION = os.environ.get("HS_TECH_APP_VERSION", "unknown")
 
 # Windows CapCut Paths
 LOCAL_APPDATA = os.environ.get("LOCALAPPDATA", "")
@@ -62,15 +68,8 @@ def add_cors_headers(response):
 
 
 def is_capcut_running() -> bool:
-    try:
-        out = subprocess.check_output(
-            ["tasklist", "/FI", "IMAGENAME eq CapCut.exe"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        )
-        return "CapCut.exe" in out
-    except Exception:
-        return False
+    """Return CapCut's verified process state; query failures must stop the caller."""
+    return capcut_process_running(platform="win32")
 
 
 def is_capcut_foreground() -> bool:
@@ -122,13 +121,36 @@ def require_capcut_foreground():
         raise RuntimeError("Bring the CapCut window to the foreground before sending live shortcuts")
 
 
+def _live_guard_http_status(error: RuntimeError) -> int:
+    """Indeterminate process state is unavailable; known guard failures are conflicts."""
+    return 503 if isinstance(error, ProcessStateUnknown) else 409
+
+
+@app.route("/api/v1/health", methods=["GET"])
+def health():
+    return jsonify({
+        "service": "hs-tech-capcut-plugin",
+        "version": APP_VERSION,
+        "pid": os.getpid(),
+        "port": int(os.environ.get("CAPCUT_PLUGIN_PORT", "8765")),
+        "connection": "local_process_and_project_files_check_only",
+    })
+
+
 @app.route("/", methods=["GET"])
 def index():
+    try:
+        running = is_capcut_running()
+        process_check = "verified"
+    except ProcessStateUnknown:
+        running = None
+        process_check = "unknown"
     return jsonify({
         "plugin": "CapCut Bridge Windows Plugin",
-        "version": "1.2.0",
+        "version": APP_VERSION,
         "platform": "Windows",
-        "capcut_running": is_capcut_running(),
+        "capcut_running": running,
+        "process_check": process_check,
         "projects_dir": str(CAPCUT_PROJECTS_DIR),
         "endpoints": [
             "GET /api/v1/status",
@@ -136,19 +158,27 @@ def index():
             "POST /api/v1/launch",
             "POST /api/v1/export",
             "POST /api/v1/split",
-            "POST /api/v1/play",
-            "POST /api/v1/seek",
-            "POST /api/v1/add-text",
-            "POST /api/v1/replay"
+            "POST /api/v1/play"
         ]
     })
 
 
 @app.route("/api/v1/status", methods=["GET"])
 def get_status():
-    running = is_capcut_running()
+    try:
+        running = is_capcut_running()
+        process_check = "verified"
+        foreground = is_capcut_foreground() if running else False
+    except ProcessStateUnknown:
+        running = None
+        foreground = None
+        process_check = "unknown"
     return jsonify({
+        "service": "hs-tech-capcut-plugin",
+        "version": APP_VERSION,
         "running": running,
+        "foreground": foreground,
+        "process_check": process_check,
         "platform": "win32",
         "projects_path_exists": CAPCUT_PROJECTS_DIR.exists()
     })
@@ -157,27 +187,60 @@ def get_status():
 @app.route("/api/v1/drafts", methods=["GET"])
 def list_drafts():
     if not CAPCUT_PROJECTS_DIR.exists():
-        return jsonify({"drafts": [], "error": "Projects directory not found"}), 404
+        return jsonify({"drafts": [], "count": 0, "source": "local_capcut_projects"})
 
     drafts = []
-    for item in sorted(CAPCUT_PROJECTS_DIR.iterdir()):
-        if item.is_dir() and not item.name.startswith("."):
-            content_file = item / "draft_content.json"
-            dur_sec = 0.0
-            if content_file.exists():
-                try:
-                    with open(content_file, "r", encoding="utf-8") as f:
-                        d = json.load(f)
-                        dur_sec = d.get("duration", 0) / 1_000_000
-                except Exception:
-                    pass
-            drafts.append({
-                "name": item.name,
-                "duration_seconds": dur_sec,
-                "path": str(item)
-            })
+    for item in CAPCUT_PROJECTS_DIR.iterdir():
+        if not item.is_dir() or item.name.startswith("."):
+            continue
+        content_file = item / "draft_content.json"
+        summary = {
+            "name": item.name,
+            "duration_seconds": None,
+            "media_count": None,
+            "video_count": None,
+            "audio_count": None,
+            "timeline_count": None,
+            "clip_count": None,
+            "modified_at": None,
+            "path": str(item),
+        }
+        try:
+            modified = content_file.stat().st_mtime if content_file.exists() else item.stat().st_mtime
+            summary["modified_at"] = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(modified))
+        except OSError:
+            pass
+        if content_file.is_file():
+            try:
+                with content_file.open("r", encoding="utf-8") as draft_file:
+                    content = json.load(draft_file)
+                duration_us = int(content.get("duration", 0) or 0)
+                materials = content.get("materials", {})
+                videos = materials.get("videos", []) if isinstance(materials, dict) else []
+                audios = materials.get("audios", []) if isinstance(materials, dict) else []
+                tracks = content.get("tracks", [])
+                videos = videos if isinstance(videos, list) else []
+                audios = audios if isinstance(audios, list) else []
+                tracks = tracks if isinstance(tracks, list) else []
+                clip_count = sum(
+                    len(track.get("segments", []))
+                    for track in tracks
+                    if isinstance(track, dict) and isinstance(track.get("segments", []), list)
+                )
+                summary.update({
+                    "duration_seconds": round(duration_us / 1_000_000, 3),
+                    "media_count": len(videos) + len(audios),
+                    "video_count": len(videos),
+                    "audio_count": len(audios),
+                    "timeline_count": sum(1 for track in tracks if isinstance(track, dict) and track.get("segments")),
+                    "clip_count": clip_count,
+                })
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                summary["read_error"] = True
+        drafts.append(summary)
 
-    return jsonify({"drafts": drafts, "count": len(drafts)})
+    drafts.sort(key=lambda draft: draft["modified_at"] or "", reverse=True)
+    return jsonify({"drafts": drafts, "count": len(drafts), "source": "local_capcut_projects"})
 
 
 @app.route("/api/v1/export", methods=["POST"])
@@ -186,27 +249,32 @@ def export_timeline():
     try:
         require_capcut_foreground()
     except RuntimeError as exc:
-        return jsonify({"error": str(exc)}), 409 if is_capcut_running() else 400
+        return jsonify({"status": "not_sent", "verified": False, "error": str(exc)}), _live_guard_http_status(exc)
 
     try:
         import pyautogui
     except ImportError:
         return jsonify({"error": "pyautogui is required for Live actions. Run: pip install pyautogui"}), 500
 
-    # Ctrl + E shortcut
-    pyautogui.hotkey("ctrl", "e")
-    time.sleep(1.0)
-    # Confirm
-    pyautogui.press("enter")
-    time.sleep(2.0)
-    # Clear modal share screen (Esc)
-    pyautogui.press("esc")
+    # Each global keyboard action requires CapCut to remain foreground.
+    try:
+        require_capcut_foreground()
+        pyautogui.hotkey("ctrl", "e")
+        time.sleep(1.0)
+        require_capcut_foreground()
+        pyautogui.press("enter")
+        time.sleep(2.0)  # fixed delay only; this is not render-progress polling
+        require_capcut_foreground()
+        pyautogui.press("esc")
+    except RuntimeError as exc:
+        return jsonify({"status": "not_sent_or_incomplete", "verified": False, "error": str(exc)}), _live_guard_http_status(exc)
 
     return jsonify({
-        "success": True,
-        "action": "export_shortcut_sent",
+        "status": "sent_unverified",
+        "action": "export_shortcut_sequence_sent",
         "verified": False,
-        "message": "Export shortcut sent; CapCut's completed output was not verified."
+        "verification_scope": "keyboard_events_only",
+        "message": "Keyboard events were sent; export dialog state, completion, and output file were not verified."
     })
 
 
@@ -216,19 +284,24 @@ def split_clip():
     try:
         require_capcut_foreground()
     except RuntimeError as exc:
-        return jsonify({"error": str(exc)}), 409 if is_capcut_running() else 400
+        return jsonify({"status": "not_sent", "verified": False, "error": str(exc)}), _live_guard_http_status(exc)
 
     try:
         import pyautogui
     except ImportError:
         return jsonify({"error": "pyautogui required"}), 500
 
+    try:
+        require_capcut_foreground()
+    except RuntimeError as exc:
+        return jsonify({"status": "not_sent", "verified": False, "error": str(exc)}), _live_guard_http_status(exc)
     pyautogui.hotkey("ctrl", "b")
     return jsonify({
-        "success": True,
+        "status": "sent_unverified",
         "action": "split_shortcut_sent",
         "verified": False,
-        "message": "Split shortcut sent to the foreground application; edit result was not verified."
+        "verification_scope": "keyboard_event_only",
+        "message": "Split shortcut was sent to foreground CapCut; edit result was not verified."
     })
 
 
@@ -238,21 +311,32 @@ def toggle_play():
     try:
         require_capcut_foreground()
     except RuntimeError as exc:
-        return jsonify({"error": str(exc)}), 409 if is_capcut_running() else 400
+        return jsonify({"status": "not_sent", "verified": False, "error": str(exc)}), _live_guard_http_status(exc)
 
     try:
         import pyautogui
     except ImportError:
         return jsonify({"error": "pyautogui required"}), 500
 
+    try:
+        require_capcut_foreground()
+    except RuntimeError as exc:
+        return jsonify({"status": "not_sent", "verified": False, "error": str(exc)}), _live_guard_http_status(exc)
     pyautogui.press("space")
-    return jsonify({"success": True, "action": "play_pause_shortcut_sent", "verified": False})
+    return jsonify({
+        "status": "sent_unverified",
+        "action": "play_pause_shortcut_sent",
+        "verified": False,
+        "verification_scope": "keyboard_event_only",
+    })
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("CAPCUT_PLUGIN_PORT", 8765))
-    print(f"=======================================================")
-    print(f"  CapCut Windows Plugin Server running on port {port}")
+    if port < 1 or port > 65535:
+        raise ValueError("CAPCUT_PLUGIN_PORT must be between 1 and 65535")
+    print("=======================================================")
+    print(f"  HS.Tech CapCut Plugin v{APP_VERSION} running on port {port}")
     print(f"  API Address: http://127.0.0.1:{port}")
-    print(f"=======================================================")
-    app.run(host="127.0.0.1", port=port, debug=False)
+    print("=======================================================")
+    app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)

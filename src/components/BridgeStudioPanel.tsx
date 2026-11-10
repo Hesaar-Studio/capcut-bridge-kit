@@ -20,6 +20,7 @@ import {
   Globe
 } from 'lucide-react';
 import { Platform } from '../types';
+import { getBridgeStatus } from '../services/bridgeApi';
 
 interface BridgeStudioPanelProps {
   platform: Platform;
@@ -44,88 +45,88 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
   const [highlights, setHighlights] = useState<number>(-18);
   const [shadows, setShadows] = useState<number>(10);
 
-  // MCP Simulation state
-  const [mcpConsoleLog, setMcpConsoleLog] = useState<string>(
+  // Panel actions: backend status is queried for real; unsupported NLE sync is never simulated.
+  const [panelOutput, setPanelOutput] = useState<string>(
     lang === 'fa'
-      ? 'آماده برقراری ارتباط با پورت ۸۷۶۵ و دریافت فرامین از Claude Desktop / Cursor.'
-      : 'Ready on port 8765. Listening for MCP commands from Claude Desktop or Cursor.'
+      ? 'وضعیت هنوز از backend خوانده نشده است؛ برای دریافت وضعیت واقعی، «بررسی وضعیت backend» را بزنید.'
+      : 'Backend status has not been queried. Use “Check backend status” for a live read.'
   );
-  const [isExecutingMcp, setIsExecutingMcp] = useState<boolean>(false);
+  const [isRunningPanelAction, setIsRunningPanelAction] = useState<boolean>(false);
 
   const t = {
     fa: {
       brandTitle: 'پل ارتباطی HS.Tech (Hesa Art Tech)',
-      brandSubtitle: 'یکپارچه‌سازی پیشرفته هوش مصنوعی با نرم‌افزارهای CapCut، Premiere Pro و DaVinci Resolve',
+      brandSubtitle: 'این پنل پیش‌نمایش رابط و نمونه‌فایل‌هاست؛ اتصال زنده و اجرای تدوین در آن پیاده‌سازی نشده است.',
       badgeRepo: 'ریپازیتوری: hs-art-tech-bridge',
-      badgeVersion: 'نسخه ۲.۴.۰ · MCP & .EXE',
-      nleCapcut: 'کپکات دسکتاپ (CapCut)',
-      nlePremiere: 'ادوبی پرمیر (Premiere Pro)',
-      nleDavinci: 'داوینچی ریزالو (DaVinci Resolve)',
-      tabCinema4K: 'شبیه‌ساز رندر نهایی ۴K و اتالوناژ',
-      tabMcpDaemon: 'اتصال هوش مصنوعی (MCP) و سرور دسکتاپ',
-      tabDownloadDeploy: 'پکیج نصبی ویندوز (.EXE) و دانلود',
-      viewportTitle: 'مانیتور مستر ۴K (3840×2160 Ultra HD)',
-      viewportSub: 'مقایسه بلادرنگ سورس لاگ با اتالوناژ استودیویی و کادر امن پخش',
-      splitNotice: 'خط مقایسه تعاملی (A/B Split Screen Wipe) - ۵۰٪ قبل / بعد',
-      zoomToggle: 'زوم ۱۰۰٪ بررسی پیکسل',
-      aspect169: 'افقی سینمایی ۱۶:۹',
-      aspect916: 'عمودی سوشال ریلز ۹:۱۶',
-      sliderContrast: 'کنتراست (S-Curve):',
-      sliderSat: 'اشباع رنگ (Skin Tone):',
-      sliderTemp: 'دمای رنگ (Kelvin Warmth):',
-      sliderHighlights: 'مهار هایلایت‌ها (Highlights):',
-      sliderShadows: 'لیفت سایه‌ها (Shadows):',
-      btnDownloadLut: 'دانلود جدول رنگ سه‌بعدی (.CUBE LUT ۳۳×۳۳×۳۳)',
-      btnDownloadFcpxml: 'دانلود Apple FCPXML 1.10 برای پرمیر',
-      btnDownloadCapcutJson: 'دانلود draft_content.json برای کپکات',
-      mcpRunnerTitle: 'شبیه‌ساز اجرای ابزارهای MCP (Model Context Protocol)',
-      btnRunHealth: 'بررسی وضعیت سلامت پورت ۸۷۶۵',
-      btnRunSync: 'همگام‌سازی تایم‌لاین با نرم‌افزار انتخابی',
-      btnRunLut: 'فراخوانی تولید LUT هوشمند',
-      claudeConfigTitle: 'پیکربندی آماده برای Claude Desktop:',
-      cursorConfigTitle: 'پیکربندی برای Cursor و VSCode:',
+      badgeVersion: 'اتصال NLE: تأییدنشده',
+      nleCapcut: 'CapCut · نمونه رابط',
+      nlePremiere: 'Premiere Pro · آداپتر تأییدنشده',
+      nleDavinci: 'DaVinci Resolve · آداپتر تأییدنشده',
+      tabCinema4K: 'پیش‌نمایش و ابزارهای محلی',
+      tabMcpDaemon: 'وضعیت backend و نمونه تنظیمات MCP',
+      tabDownloadDeploy: 'آرشیو منبع · نصب تأییدنشده',
+      viewportTitle: 'پیش‌نمایش ۴K ساختگی · بدون ویدیوی ورودی',
+      viewportSub: 'این سطح نمایشی فایل رسانه باز نمی‌کند و خروجی NLE را رندر نمی‌کند.',
+      splitNotice: 'کنترل تعاملی روی تصویر نمونه؛ نه مقایسهٔ ویدیوی واقعی',
+      zoomToggle: 'بزرگ‌نمایی نمایشی',
+      aspect169: 'افقی ۱۶:۹',
+      aspect916: 'عمودی ۹:۱۶',
+      sliderContrast: 'کنتراست نمونه:',
+      sliderSat: 'اشباع نمایشی (در فایل LUT اعمال نمی‌شود):',
+      sliderTemp: 'دمای رنگ (نمایشی):',
+      sliderHighlights: 'هایلایت‌ها (نمایشی):',
+      sliderShadows: 'سایه‌ها (نمایشی):',
+      btnDownloadLut: 'ساخت و دانلود LUT محلی (فقط کنتراست اعمال می‌شود)',
+      btnDownloadFcpxml: 'دانلود نمونهٔ FCPXML · سازگاری بررسی‌نشده',
+      btnDownloadCapcutJson: 'دانلود JSON نمونه · پروژهٔ CapCut تأییدشده نیست',
+      mcpRunnerTitle: 'وضعیت واقعی backend و عملیات محلی',
+      btnRunHealth: 'بررسی وضعیت backend',
+      btnRunSync: 'همگام‌سازی NLE · پشتیبانی‌نشده',
+      btnRunLut: 'ساخت LUT نمونه و دانلود',
+      claudeConfigTitle: 'نمونه تنظیمات Claude Desktop؛ مسیر را اصلاح و بررسی کنید:',
+      cursorConfigTitle: 'نمونه تنظیمات Cursor و VSCode؛ مسیر را اصلاح و بررسی کنید:',
       btnCopy: 'کپی',
       copied: 'کپی شد!',
-      downloadZipTitle: 'دانلود بسته کامل سرور و دسکتاپ پل ارتباطی',
-      downloadZipDesc: 'شامل اسکریپت پایتون bridge_server.py، پکیج الکترون، فایل setup.bat و مستندات دوزبانه.',
-      btnDownloadZip: 'دانلود پکیج کامل سرور پل ارتباطی (.zip)'
+      downloadZipTitle: 'بستهٔ سورس فعلی پروژه',
+      downloadZipDesc: 'این ZIP فقط snapshot سورس است؛ Setup.exe و runtime بسته‌بندی‌شده ندارد. ساخت و نصب Windows در این محیط آزموده نشده است.',
+      btnDownloadZip: 'دانلود سورس (بدون Setup.exe)'
     },
     en: {
       brandTitle: 'HS.Tech Video Bridge (Hesa Art Tech)',
-      brandSubtitle: 'High-Performance Multi-NLE Integration for CapCut, Premiere Pro, and DaVinci Resolve',
+      brandSubtitle: 'This panel contains UI previews and sample files; live NLE connection and editing are not implemented here.',
       badgeRepo: 'Repository: hs-art-tech-bridge',
-      badgeVersion: 'v2.4.0 · MCP & .EXE',
-      nleCapcut: 'CapCut Desktop',
-      nlePremiere: 'Adobe Premiere Pro',
-      nleDavinci: 'DaVinci Resolve',
-      tabCinema4K: '4K Cinema Viewport & Color Grading',
-      tabMcpDaemon: 'AI Assistant (MCP) & Desktop Daemon',
-      tabDownloadDeploy: 'Desktop Package (.EXE) & Download',
-      viewportTitle: '4K Master Cinema Viewport (3840×2160 UHD)',
-      viewportSub: 'Real-time A/B split-screen color grading simulation with safe guides',
-      splitNotice: 'Interactive A/B Split Screen Wipe - 50% Before / After',
-      zoomToggle: '100% 4K Pixel Inspection',
-      aspect169: '16:9 Cinema Landscape',
-      aspect916: '9:16 Social Reels Portrait',
-      sliderContrast: 'Contrast (S-Curve):',
-      sliderSat: 'Saturation (Skin Tone):',
-      sliderTemp: 'Color Temp (Kelvin Warmth):',
-      sliderHighlights: 'Highlights Recovery:',
-      sliderShadows: 'Shadows Lift:',
-      btnDownloadLut: 'Download 3D CUBE LUT (33×33×33)',
-      btnDownloadFcpxml: 'Download Apple FCPXML 1.10 for Premiere',
-      btnDownloadCapcutJson: 'Download draft_content.json for CapCut',
-      mcpRunnerTitle: 'Interactive MCP Tool Execution Emulator',
-      btnRunHealth: 'Check Port 8765 Health',
-      btnRunSync: 'Sync Timeline to Target NLE',
-      btnRunLut: 'Invoke AI LUT Generation',
-      claudeConfigTitle: 'Ready-to-copy Claude Desktop Configuration:',
-      cursorConfigTitle: 'Ready-to-copy Cursor & VSCode MCP Configuration:',
+      badgeVersion: 'NLE connection: unverified',
+      nleCapcut: 'CapCut · UI sample',
+      nlePremiere: 'Premiere Pro · adapter unverified',
+      nleDavinci: 'DaVinci Resolve · adapter unverified',
+      tabCinema4K: 'Preview & local utilities',
+      tabMcpDaemon: 'Backend status & sample MCP config',
+      tabDownloadDeploy: 'Source archive · installation unverified',
+      viewportTitle: 'Simulated 4K preview · no source video',
+      viewportSub: 'This demo surface does not open media or render an NLE output.',
+      splitNotice: 'Interactive control over a placeholder image, not real before/after footage',
+      zoomToggle: 'Demo zoom',
+      aspect169: '16:9 landscape',
+      aspect916: '9:16 portrait',
+      sliderContrast: 'Demo contrast:',
+      sliderSat: 'Demo saturation (not applied to the LUT file):',
+      sliderTemp: 'Color temperature (display only):',
+      sliderHighlights: 'Highlights (display only):',
+      sliderShadows: 'Shadows (display only):',
+      btnDownloadLut: 'Generate/download local LUT (contrast only is applied)',
+      btnDownloadFcpxml: 'Download sample FCPXML · compatibility unverified',
+      btnDownloadCapcutJson: 'Download sample JSON · not a verified CapCut project',
+      mcpRunnerTitle: 'Live backend status & local utilities',
+      btnRunHealth: 'Check backend status',
+      btnRunSync: 'NLE sync · unsupported',
+      btnRunLut: 'Generate/download sample LUT',
+      claudeConfigTitle: 'Claude Desktop config example; review and replace paths:',
+      cursorConfigTitle: 'Cursor and VSCode config example; review and replace paths:',
       btnCopy: 'Copy',
       copied: 'Copied!',
-      downloadZipTitle: 'Download Complete Video Bridge System Package',
-      downloadZipDesc: 'Includes bridge_server.py, Electron tray daemon, setup.bat installer, and bilingual docs.',
-      btnDownloadZip: 'Download Complete Bridge Package (.zip)'
+      downloadZipTitle: 'Current project source snapshot',
+      downloadZipDesc: 'This ZIP contains source only; it has no Setup.exe or bundled runtime. Windows packaging and installation have not been tested here.',
+      btnDownloadZip: 'Download source (no Setup.exe)'
     }
   }[lang];
 
@@ -139,8 +140,8 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
     const size = 33;
     const lines = [
       `# HS.Tech Color Grade LUT (Hesa Art Tech)`,
-      `# Target NLE: ${activeNLE.toUpperCase()}`,
-      `# Contrast: ${contrast}, Saturation: ${saturation}`,
+      `# Local sample only; not applied to an NLE`,
+      `# Contrast applied: ${contrast}; saturation control not applied (${saturation})`,
       `LUT_3D_SIZE ${size}`,
       `DOMAIN_MIN 0.0 0.0 0.0`,
       `DOMAIN_MAX 1.0 1.0 1.0`
@@ -167,7 +168,7 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `HS_Tech_${activeNLE}_Grade_33x33.cube`;
+    a.download = 'HS_Tech_Sample_Grade_33x33.cube';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -182,7 +183,7 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
         <format id="r1" name="FFVideoFormat1080p30" frameDuration="1/30s" width="1920" height="1080"/>
     </resources>
     <library>
-        <event name="HS.Tech Premiere Project">
+        <event name="HS.Tech Sample Project">
             <project name="HS_Tech_Master_Sequence">
                 <sequence format="r1" duration="45s">
                     <spine>
@@ -199,7 +200,7 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'HS_Tech_Timeline_Premiere.fcpxml';
+    a.download = 'HS_Tech_Sample_Timeline.fcpxml';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -211,7 +212,7 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
       canvas_config: { width: 1080, height: 1920, ratio: '9:16' },
       materials: {
         videos: [
-          { id: 'v1', material_name: 'HS_Tech_Master.mp4', path: 'Resources/HS_Tech_Master.mp4', duration: 30000000 }
+          { id: 'v1', material_name: 'SAMPLE_MEDIA_NOT_INCLUDED.mp4', path: 'Resources/SAMPLE_MEDIA_NOT_INCLUDED.mp4', duration: 30000000 }
         ],
         texts: [
           {
@@ -254,81 +255,76 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'draft_content.json';
+    a.download = 'hs-tech-capcut-sample-draft.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  const runMcpSimulation = (action: 'health' | 'sync' | 'lut') => {
-    setIsExecutingMcp(true);
-    setMcpConsoleLog(
-      lang === 'fa' ? `در حال پردازش درخواست JSON-RPC برای [${action}]...` : `Dispatching JSON-RPC call for [${action}]...`
-    );
+  const runPanelAction = async (action: 'health' | 'sync' | 'lut') => {
+    setIsRunningPanelAction(true);
 
-    setTimeout(() => {
-      setIsExecutingMcp(false);
+    try {
       if (action === 'health') {
-        setMcpConsoleLog(
-          JSON.stringify(
-            {
-              jsonrpc: '2.0',
-              result: {
-                brand: 'HS.Tech Video Bridge (Hesa Art Tech)',
-                repo: 'hs-art-tech-bridge',
-                version: '2.4.0',
-                status: 'ONLINE',
-                port: 8765,
-                mcp_protocol: '2024-11-05',
-                target_nle: activeNLE,
-                latency_ms: 1.4
-              }
-            },
-            null,
-            2
-          )
-        );
-      } else if (action === 'sync') {
-        setMcpConsoleLog(
-          JSON.stringify(
-            {
-              jsonrpc: '2.0',
-              result: {
-                tool: 'sync_timeline_to_nle',
-                status: 'SUCCESS',
-                target: activeNLE.toUpperCase(),
-                cuts_applied: 4,
-                persian_subtitles: 3,
-                rtl_shaping: 'APPLIED_VAZIRMATN',
-                timestamp: new Date().toISOString()
-              }
-            },
-            null,
-            2
-          )
-        );
-      } else {
-        handleGenerateAndDownloadLUT();
-        setMcpConsoleLog(
-          JSON.stringify(
-            {
-              jsonrpc: '2.0',
-              result: {
-                tool: 'export_color_grade_lut',
-                format: '3D_CUBE_33x33x33',
-                contrast: contrast,
-                saturation: saturation,
-                file: `HS_Tech_${activeNLE}_Grade_33x33.cube`,
-                status: 'DOWNLOAD_TRIGGERED'
-              }
-            },
-            null,
-            2
-          )
-        );
+        const status = await getBridgeStatus();
+        setPanelOutput(JSON.stringify({
+          source: 'backend',
+          version: status.version,
+          platform: status.platform,
+          bridge: status.bridge?.status ?? 'unknown',
+          api: status.api?.status ?? 'unknown',
+          editor: {
+            status: status.editor?.status ?? 'unknown',
+            running: status.editor?.running ?? null,
+            foreground: status.editor?.foreground ?? null
+          },
+          mcp: { status: status.mcp?.status ?? 'unknown', tools: status.mcp?.tools ?? [] },
+          ai: status.ai?.status ?? 'unknown',
+          automation: status.automation?.status ?? 'unknown',
+          capabilities: status.capabilities,
+          plugin: {
+            status: status.plugin?.status ?? 'unknown',
+            managed: status.plugin?.managed ?? false,
+            port: status.plugin?.port ?? null,
+            projectsPathExists: status.plugin?.projectsPathExists ?? null
+          }
+        }, null, 2));
+        return;
       }
-    }, 700);
+
+      if (action === 'sync') {
+        setPanelOutput(JSON.stringify({
+          status: 'UNSUPPORTED',
+          action: 'nle_timeline_sync',
+          target: activeNLE,
+          request_sent: false,
+          reason: 'This panel has no verified timeline-sync adapter.'
+        }, null, 2));
+        return;
+      }
+
+      handleGenerateAndDownloadLUT();
+      setPanelOutput(JSON.stringify({
+        status: 'DOWNLOAD_REQUESTED',
+        source: 'local browser utility',
+        file: 'HS_Tech_Sample_Grade_33x33.cube',
+        dimensions: '33x33x33',
+        parameters_applied: ['contrast'],
+        parameters_not_applied: ['saturation', 'temperature', 'highlights', 'shadows'],
+        nle_applied: false,
+        file_saved_or_opened: 'not verified'
+      }, null, 2));
+    } catch {
+      setPanelOutput(JSON.stringify({
+        status: 'UNAVAILABLE',
+        source: 'backend',
+        message: 'The backend status request failed; detailed errors are intentionally omitted from this UI.',
+        editing_claimed: false
+      }, null, 2));
+    } finally {
+      setIsRunningPanelAction(false);
+    }
   };
 
   const claudeConfigSnippet = `{
@@ -340,8 +336,7 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
         "--mcp"
       ],
       "env": {
-        "PYTHONIOENCODING": "utf-8",
-        "HS_TECH_PORT": "8765"
+        "PYTHONIOENCODING": "utf-8"
       }
     }
   }
@@ -378,7 +373,7 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
             </div>
 
             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-3 h-3 rounded-full bg-amber-400" />
               <span>{t.brandTitle}</span>
             </h1>
             <p className="text-slate-300 text-xs md:text-sm max-w-2xl leading-relaxed">{t.brandSubtitle}</p>
@@ -415,8 +410,8 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
                   onDownloadZip();
                 } else {
                   const a = document.createElement('a');
-                  a.href = '/capcut-bridge-kit.zip';
-                  a.download = 'hs-art-tech-bridge-v2.4.zip';
+                  a.href = '/hs-art-tech-bridge.zip';
+                  a.download = 'HS-Tech-CapCut-Bridge-Source.zip';
                   document.body.appendChild(a);
                   a.click();
                   document.body.removeChild(a);
@@ -704,9 +699,9 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
         </div>
       </div>
 
-      {/* Bottom Section: MCP Interactive Emulator & Coding Assistant Configs */}
+      {/* Backend status/local utility panel and sample assistant configurations */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Interactive MCP Runner (6 cols) */}
+        {/* Left: Live backend status query and local utility actions (6 cols) */}
         <div className="lg:col-span-6 space-y-3">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -714,14 +709,14 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
                 <Cpu className="w-4 h-4 text-emerald-400" />
                 <span>{t.mcpRunnerTitle}</span>
               </h3>
-              <span className="text-[11px] text-emerald-400 font-mono">Port 8765</span>
+              <span className="text-[11px] text-amber-300 font-mono">{lang === 'fa' ? 'نتیجهٔ بررسی در پایین نمایش داده می‌شود' : 'Query result is shown below'}</span>
             </div>
 
             {/* Action Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
-                onClick={() => runMcpSimulation('health')}
-                disabled={isExecutingMcp}
+                onClick={() => runPanelAction('health')}
+                disabled={isRunningPanelAction}
                 className="py-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <Activity className="w-3.5 h-3.5 text-emerald-400" />
@@ -729,17 +724,17 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
               </button>
 
               <button
-                onClick={() => runMcpSimulation('sync')}
-                disabled={isExecutingMcp}
+                onClick={() => runPanelAction('sync')}
+                disabled={isRunningPanelAction}
                 className="py-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <RefreshCw className={`w-3.5 h-3.5 text-teal-400 ${isExecutingMcp ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 text-teal-400 ${isRunningPanelAction ? 'animate-spin' : ''}`} />
                 <span>{t.btnRunSync}</span>
               </button>
 
               <button
-                onClick={() => runMcpSimulation('lut')}
-                disabled={isExecutingMcp}
+                onClick={() => runPanelAction('lut')}
+                disabled={isRunningPanelAction}
                 className="py-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <Sun className="w-3.5 h-3.5 text-amber-400" />
@@ -749,8 +744,8 @@ export const BridgeStudioPanel: React.FC<BridgeStudioPanelProps> = ({ platform, 
 
             {/* Output Console Log */}
             <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 font-mono text-xs text-emerald-400 min-h-[140px] max-h-[180px] overflow-y-auto ltr text-left leading-relaxed">
-              <div className="text-slate-500 mb-1">// HS.Tech Bridge MCP Stdio Logger</div>
-              <pre className="whitespace-pre-wrap">{mcpConsoleLog}</pre>
+              <div className="text-slate-500 mb-1">// {lang === 'fa' ? 'نتیجهٔ backend / عملیات محلی؛ نه لاگ MCP' : 'Backend result / local action; not an MCP log'}</div>
+              <pre className="whitespace-pre-wrap">{panelOutput}</pre>
             </div>
           </div>
         </div>

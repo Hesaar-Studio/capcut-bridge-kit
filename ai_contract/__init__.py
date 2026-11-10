@@ -28,6 +28,12 @@ from .schemas import (
     ContractResponse,
     validate_contract_request,
 )
+from .surface_map import (
+    CapCutIntegrationSurface,
+    CapCutSurfaceStatus,
+    SurfaceEvidence,
+    get_capcut_surface_map,
+)
 
 __all__ = [
     "CapabilityRegistry",
@@ -42,6 +48,10 @@ __all__ = [
     "ExecutionStatus",
     "ReceiptStore",
     "GLOBAL_RECEIPT_STORE",
+    "CapCutSurfaceStatus",
+    "SurfaceEvidence",
+    "CapCutIntegrationSurface",
+    "get_capcut_surface_map",
     "ContractDispatcher",
     "dispatch_contract_request",
 ]

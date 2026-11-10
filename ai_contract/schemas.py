@@ -7,11 +7,12 @@ Reuses existing Phase 2 DraftProject and Phase 3A EditPlan models.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-SAFE_PROJECT_NAME_REGEX = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _.-]{0,79}$")
+SAFE_PROJECT_NAME_REGEX = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _().-]{0,79}$")
 
 
 @dataclass
@@ -73,6 +74,14 @@ TOOL_PARAM_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "get_capabilities": {
         "required": [],
         "optional": ["platform"],
+    },
+    "get_capcut_surface_map": {
+        "required": [],
+        "optional": [],
+    },
+    "list_projects": {
+        "required": [],
+        "optional": [],
     },
     "inspect_project": {
         "required": ["project_name"],
@@ -136,6 +145,8 @@ def validate_contract_request(req: ContractRequest) -> Tuple[bool, Optional[str]
         return False, f"Unknown operation: '{op}'"
 
     params = req.parameters
+    if not isinstance(params, dict):
+        return False, "'parameters' must be a JSON object."
     for req_field in schema["required"]:
         if req_field not in params or params[req_field] is None:
             return False, f"Operation '{op}' missing required parameter '{req_field}'."
@@ -144,6 +155,31 @@ def validate_contract_request(req: ContractRequest) -> Tuple[bool, Optional[str]
     proj_name = params.get("project_name")
     if proj_name is not None:
         if not isinstance(proj_name, str) or not SAFE_PROJECT_NAME_REGEX.fullmatch(proj_name) or proj_name in {".", ".."}:
-            return False, f"Invalid project_name '{proj_name}'. Must be alphanumeric with spaces, dots, or dashes (max 80 chars)."
+            return False, f"Invalid project_name '{proj_name}'. Must be a single safe folder name (max 80 characters)."
+
+    numeric_bounds = {
+        "min_gap_sec": (0.0, 3600.0),
+        "min_pause_gap_sec": (0.0, 3600.0),
+        "max_time_distance_sec": (0.0, 86400.0),
+        "max_duplicate_distance_sec": (0.0, 86400.0),
+        "high_threshold": (0.0, 1.0),
+        "possible_threshold": (0.0, 1.0),
+    }
+    for field_name, (minimum, maximum) in numeric_bounds.items():
+        if field_name not in params:
+            continue
+        value = params[field_name]
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return False, f"'{field_name}' must be a finite number in [{minimum}, {maximum}]."
+        try:
+            finite_value = float(value)
+        except (OverflowError, ValueError):
+            return False, f"'{field_name}' must be a finite number in [{minimum}, {maximum}]."
+        if not math.isfinite(finite_value) or not minimum <= finite_value <= maximum:
+            return False, f"'{field_name}' must be a finite number in [{minimum}, {maximum}]."
+    if params.get("high_threshold", 0.85) < params.get("possible_threshold", 0.70):
+        return False, "'high_threshold' must be greater than or equal to 'possible_threshold'."
+    if "check_files" in params and not isinstance(params["check_files"], bool):
+        return False, "'check_files' must be a boolean."
 
     return True, None

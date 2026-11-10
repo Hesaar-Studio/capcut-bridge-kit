@@ -1,5 +1,5 @@
 # CapCut Bridge Kit 🎬⚡
-### Automated AI-to-CapCut Timeline Pipeline & Desktop Bridge (Windows & macOS)
+### Local draft tools, guarded desktop shortcuts, and CapCut discovery (Windows & macOS)
 
 <p align="center">
   <a href="https://github.com/Hesaar-Studio/capcut-bridge-kit">
@@ -7,7 +7,7 @@
   </a>
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+" />
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Platform" />
-  <img src="https://img.shields.io/badge/AI-Kling%20%7C%20Runway%20%7C%20ElevenLabs-8A2BE2?style=for-the-badge" alt="AI Models" />
+  <img src="https://img.shields.io/badge/AI-Prompt%20Library-8A2BE2?style=for-the-badge" alt="AI prompt library" />
   <img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License" />
 </p>
 
@@ -15,7 +15,7 @@
 
 ## 📖 معرفی به فارسی (Overview in Persian)
 
-**CapCut Bridge Kit** یک نمونه‌ی در حال توسعه برای اتصال ابزارهای هوش مصنوعی به پروژه‌های دسکتاپ **CapCut** است. این بسته چند ابزار محلی پایتون و یک سرور MCP دارد؛ اتصال مستقیم و کامل به تایم‌لاین باز CapCut هنوز ارائه نشده است.
+**CapCut Bridge Kit** مجموعه‌ای آزمایشی از ابزارهای محلی برای کار با فایل پروژه و بررسی مسیرهای اتصال به **CapCut** است. این بسته چند ابزار Python و یک سرور MCP دارد؛ اتصال مستقیم و تأییدشده به تایم‌لاین باز CapCut ارائه نمی‌کند.
 
 ابزارهای فعلی بخشی از تغییرات پروژه را از طریق فایل‌های داخلی CapCut انجام می‌دهند و چند میانبر دسکتاپ را می‌فرستند. رفتار آن‌ها به نسخه‌ی CapCut و ساختار فایل پروژه وابسته است؛ پیش از تغییر پروژه، نسخه‌ی پشتیبان بگیرید.
 
@@ -25,12 +25,11 @@
 
 ## 🌟 ویژگی‌های کلیدی (Key Features)
 
-- 🔌 **اتصال MCP محلی:** فهرست پروژه‌ها، بررسی وضعیت محلی، ساخت پروژه‌ی تازه از برش‌های فایل و افزودن متن به پروژه‌ی موجود. عملیات ساخت/ویرایش ممکن است CapCut را ببندد و دوباره باز کند.
-- 🪟 **پشتیبانی کامل از ویندوز (Windows Native):**
-  - اسکریپت اختصاصی `capcut-bridge-win.py` با بهره‌گیری از `pyautogui` و Win32 API.
-  - فایل نصب خودکار یک‌کلیکه `install-plugin-win.bat`.
-  - سرویس سرور پلاگین پس‌زمینه `capcut-plugin-win.py` روی پورت `http://127.0.0.1:8765`.
-- 🍏 **پشتیبانی کامل از مکینتاش (macOS):**
+- 🔌 **اتصال MCP محلی:** ابزارهای read-only برای فهرست و بررسی پروژه‌ها، بررسی capabilityها و نمایش نقشهٔ شواهد مسیرهای اتصال CapCut؛ ابزارهای ساخت/متن فقط در مسیر فایل پروژه‌اند و readback روی دیسک، پذیرش در CapCut را ثابت نمی‌کند.
+- 🪟 **مسیر Windows (نمونهٔ در حال توسعه؛ اجرای زنده تأییدنشده):**
+  - اسکریپت `capcut-bridge-win.py` و میانبرهای محدود با بررسی foreground؛ ارسال کلید به‌تنهایی نتیجهٔ timeline را تأیید نمی‌کند.
+  - سرویس REST محلی `capcut-plugin-win.py` روی `http://127.0.0.1:8765`؛ روی loopback بماند و به شبکه/اینترنت منتشر نشود.
+- 🍏 **مسیر macOS (نمونهٔ در حال توسعه؛ اجرای زنده تأییدنشده):**
   - اسکریپت `capcut-bridge.py` با هدر استاندارد PEP 723 و پکیج‌منیجر سریع `uv` با پکیج‌های PyObjC و Quartz.
 - 🧪 **ابزارهای فایل پروژه (تجربی):**
   - نوشتن پروژه‌ی تازه از فهرست برش‌های ویدیویی.
@@ -50,46 +49,40 @@
 (Kling / Runway / ElevenLabs / Gemini)
            │
            ▼
-[ CapCut Bridge Engine ]
- ├── File Lane (Disk Operations)
- │    ├── Graceful App Shutdown (taskkill / pkill)
- │    ├── Clean Cache: /Timelines/
- │    ├── Hardlink Assets to /Resources/
- │    └── Inject clean draft_content.json
- │
- └── Live Lane (local pyautogui / PyObjC keyboard and accessibility control)
-      ├── Split Clip: Ctrl+B / Cmd+B
-      ├── Play / Pause: Space
-      ├── Export Timeline: Ctrl+E / Cmd+E
-      └── Dismiss Social Share Dialog: Esc
+[ HS.Tech Bridge ]
+ ├── Read-only surface map (10 CapCut integration pathways)
+ ├── Draft-file lane
+ │    ├── Backup before an existing-draft write
+ │    ├── Atomic JSON replacement and disk readback
+ │    └── Disk readback is not CapCut UI acceptance
+ ├── Guarded keyboard lane
+ │    ├── Limited shortcuts only when CapCut is foreground
+ │    └── Sent events are not editor-side completion proof
+ └── Local MCP stdio / loopback REST
+      └── Bridge-to-agent protocol; not a CapCut-owned IPC API
            │
            ▼
-[ CapCut Desktop Editor (Windows / macOS) ]
+[ CapCut Desktop (manual review required for live acceptance) ]
 ```
 
 ---
 
 ## 🚀 راهنمای نصب و راه‌اندازی سریع (Quick Start)
 
-### 🪟 روش اول: ویندوز (Windows)
+### 🪟 نصب‌کنندهٔ ویندوز (Windows x64)
 
-#### الف) نصب خودکار با ۱ کلیک:
-فایل `install-plugin-win.bat` را دانلود کرده و روی آن راست‌کلیک کنید و گزینه **Run as administrator** را بزنید:
-1. پایتون سیستم بررسی می‌شود.
-2. پکیج‌های `pyautogui`، `pillow`، `flask`، `requests` و `pywin32` نصب می‌شوند.
-3. متغیر محیطی `PATH` تنظیم شده و سرور محلی پلاگین در پس‌زمینه اجرا می‌گردد.
+این مخزن مسیر ساخت نصب‌کنندهٔ NSIS دارد؛ ZIP قابل‌دانلود از پنل، snapshot سورس است و **Setup.exe نیست**. برای بازسازی آن از سورس فعلی، `npm run package:source` را اجرا کنید. ساخت نصب‌کننده باید روی **Windows x64** انجام شود، چون runtime پایتون با PyInstaller برای ویندوز بسته‌بندی می‌شود. پیش‌نیازها Node.js 22.12 یا جدیدتر، Python 3.11 یا جدیدتر و npm 10 یا جدیدتر هستند. پس از گرفتن سورس:
 
-#### ب) نصب دستی در ویندوز (Command Prompt / PowerShell):
-```bash
-# ۱. نصب پکیج‌های پایتون
-pip install pyautogui pillow flask requests pywin32
-
-# ۲. اجرای سرور پلاگین پس‌زمینه
-python capcut-plugin-win.py
-
-# ۳. اجرای اسکریپت بریج برای مشاهده پروژه‌ها
-python capcut-bridge-win.py ls
+```powershell
+npm ci
+python -m pip install -r requirements-win-build.txt
+npm test
+npm run build:win
 ```
+
+فایل خروجی در `release/artifacts/HS.Tech-Bridge-Setup-x64.exe` ساخته می‌شود. GitHub Actions نیز با اجرای workflow دستی **Windows x64 installer** همین فایل و checksum آن را به‌صورت artifact می‌سازد. این نصب‌کننده per-user است و نباید برای اجرا به Administrator نیاز داشته باشد. فایل unsigned است؛ در صورت انتشار عمومی باید امضای کد معتبر اضافه شود.
+
+`install-all-win.bat` نصاب برنامه نیست و فقط برای آماده‌سازی محیط توسعه است. اگر Node.js موجود نباشد، تلاش می‌کند با `winget` نسخهٔ LTS را نصب کند؛ همچنین بسته‌های Python را در محیط فعال نصب و `npm ci` اجرا می‌کند، بنابراین ممکن است محیط/نرم‌افزار دستگاه را تغییر دهد. فقط در صورت قصد توسعه آن را اجرا کنید. این اسکریپت به‌تنهایی Setup.exe نمی‌سازد. ساخت موفق فایل `.exe` نیز آزمون نصب، شروع و حذف روی Windows یا اتصال زنده به CapCut را ثابت نمی‌کند. هرگز CapCut را با Administrator اجرا نکنید و برای دورزدن UIPI یا محدودیت‌های دسترسی elevation ندهید.
 
 ---
 
@@ -129,7 +122,7 @@ npm run dev
 
 بعد از اجرای موفق، آدرس محلی نمایش‌داده‌شده در ترمینال را در مرورگر باز کنید. برای اجرای مستقیم Bridge MCP نیز از این فرمان استفاده کنید:
 
-برای نصب یک‌جای Bridge و پنل در ویندوز، روی فایل `install-all-win.bat` دوبار کلیک کنید. این نصب‌کننده مسیر پروژه را خودش پیدا می‌کند، وجود Python و Node.js را بررسی می‌کند، در صورت امکان Node.js LTS را با `winget` نصب می‌کند، وابستگی‌های Python و پنل را نصب می‌کند و در پایان برای اجرای پنل سؤال می‌کند. برای اجرای دوبارهٔ پنل پس از نصب، روی `start-panel-win.bat` دوبار کلیک کنید.
+`install-all-win.bat` فقط helper توسعه است؛ جزئیات تغییراتی که انجام می‌دهد در هشدار بالا آمده است. برای ساخت Setup.exe، پیش‌نیازها و فرمان‌های [راهنمای نصاب Windows](docs/WINDOWS_INSTALLER_BUILD.md) را دنبال کنید. اسکریپت‌های قدیمی `install-plugin-win.bat`، `bridge_system/setup.bat` و `bridge_system/install.sh` غیرفعال‌اند.
 
 ```bash
 python bridge_system/bridge_server.py --mcp
@@ -137,7 +130,11 @@ python bridge_system/bridge_server.py --mcp
 
 ## 🔌 اتصال MCP به دستیارها
 
-راهنمای تنظیم Claude Desktop و Cursor و ابزارهای واقعاً پیاده‌سازی‌شده در [bridge_system/README.md](bridge_system/README.md) آمده است. سرور MCP از `stdio` استفاده می‌کند و برای همین نیازی به بازکردن پورت HTTP ندارد. در حال حاضر MCP کنترل زنده‌ی تایم‌لاین باز را انجام نمی‌دهد.
+راهنمای تنظیم Claude Desktop و Cursor و ابزارهای پیاده‌سازی‌شده در [bridge_system/README.md](bridge_system/README.md) آمده است. MCP این Bridge از `stdio` استفاده می‌کند و کنترل مستقیم timeline باز در CapCut ارائه نمی‌دهد. CapCut × Codex یک مسیر رسمی جداگانه و region-gated است؛ آن را با API محلی یا IPC برنامه اشتباه نگیرید.
+
+## 🧭 نقشه مسیرهای اتصال CapCut
+
+برای جلوگیری از توقف در «API عمومی پیدا نشد»، ده مسیر رسمی، محلی، فایل‌محور، UIA، community و black-box جداگانه با وضعیت‌های `FOUND`, `SUPPORTED`, `EXPERIMENTAL`, `UNVERIFIED`, یا `UNAVAILABLE` ثبت شده‌اند. نقشه read-only است و هیچ probe یا تغییری اجرا نمی‌کند. شواهد، محدودیت‌ها و آزمون امن بعدی در [docs/CAPCUT_SURFACE_MAP.md](docs/CAPCUT_SURFACE_MAP.md) آمده و از operation قرارداد `get_capcut_surface_map` نیز در دسترس است.
 
 ## 📡 وب‌سرویس نمونه
 
@@ -175,7 +172,7 @@ python capcut-bridge-win.py replay sample-cuts.json --name "Podcast_Highlight_01
 python capcut-bridge-win.py replay sample-cuts.json --name "Podcast_Highlight_01" --overwrite --confirm-name "Podcast_Highlight_01"
 ```
 
-### ۳. اضافه کردن زیرنویس با استایل متحرک:
+### ۳. افزودن یک قطعهٔ متن به فایل پروژه (آزمایشی):
 ```bash
 python capcut-bridge-win.py add-text "Podcast_Highlight_01" "راز موفقیت اینجاست!" --at 1.2 --dur 2.0 --font "TheBoldFont"
 ```
@@ -199,9 +196,9 @@ capcut-bridge-kit/
 ├── .gitignore                    # فایل‌های نادیده‌گرفته‌شده در گیت
 ├── LICENSE                       # مجوز نرم‌افزار آزاد MIT
 ├── README.md                     # راهنمای کامل پروژه (فارسی و انگلیسی)
-├── install-plugin-win.bat        # فایل نصب خودکار و ۱-کلیک برای ویندوز
-├── capcut-bridge-win.py          # اسکریپت اتوماسیون کامل ویندوز (pyautogui)
-├── capcut-plugin-win.py          # وب‌سرور پلاگین پس‌زمینه ویندوز (REST API)
+├── install-plugin-win.bat        # اسکریپت قدیمی؛ غیرفعال و بدون تغییر سیستم
+├── capcut-bridge-win.py          # CLI ویندوز؛ میانبرهای محدود و guarded، نتیجهٔ زنده تأییدنشده
+├── capcut-plugin-win.py          # سرویس REST روی loopback؛ پلاگین رسمی CapCut نیست
 ├── capcut-bridge.py              # اسکریپت اتوماسیون مکینتاش (PyObjC / uv)
 ├── INPUT-CONTRACT.md             # مستندات قرارداد فنی فرمت JSON و EDL
 ├── sample-cuts.json              # نمونه فایل کات‌های تدوین هوش مصنوعی

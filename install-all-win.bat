@@ -1,17 +1,24 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title CapCut Bridge Kit - Full Windows Installer
+title CapCut Bridge Kit - Developer Setup Helper
 color 0A
 
 echo ================================================
-echo   CapCut Bridge Kit - Full Windows Installer
+echo   CapCut Bridge Kit - Developer Setup Helper
+echo   This is not the packaged Windows Setup.exe
 echo ================================================
 echo.
 
 python --version >nul 2>&1
 if errorlevel 1 (
   echo [ERROR] Python 3.11+ is required and was not found in PATH.
+  pause
+  exit /b 1
+)
+python -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
+if errorlevel 1 (
+  echo [ERROR] Python 3.11 or newer is required.
   pause
   exit /b 1
 )
@@ -29,6 +36,12 @@ if errorlevel 1 (
   pause
   exit /b 0
 )
+node -e "const [major, minor] = process.versions.node.split('.').map(Number); process.exit(major > 22 || (major === 22 && minor >= 12) ? 0 : 1)"
+if errorlevel 1 (
+  echo [ERROR] Node.js 22.12 or newer is required. Install the current LTS release and retry.
+  pause
+  exit /b 1
+)
 
 npm --version >nul 2>&1
 if errorlevel 1 (
@@ -42,13 +55,15 @@ python -m pip install --upgrade pyautogui pillow flask requests pywin32
 if errorlevel 1 goto :fail
 
 echo [2/3] Installing web panel dependencies...
-npm install
+npm ci
 if errorlevel 1 goto :fail
 
-echo [3/3] Installation complete.
+echo [3/3] Developer dependencies installed.
 echo.
 echo Start the panel with: npm run dev
 echo Start MCP directly with: python bridge_system\bridge_server.py --mcp
+echo Build the native Windows Setup.exe with: npm run build:win
+echo (Run the build from a Windows x64 terminal after installing requirements-win-build.txt.)
 echo.
 choice /M "Start the web panel now"
 if errorlevel 2 goto :done

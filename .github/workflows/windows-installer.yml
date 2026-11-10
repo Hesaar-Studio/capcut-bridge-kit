@@ -1,0 +1,46 @@
+name: Windows x64 installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-win-build.txt
+
+      - name: Run tests and build Windows x64 installer
+        shell: pwsh
+        run: ./scripts/verify-windows-release.ps1
+
+      - name: Upload installer and build report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HS-Tech-Bridge-Windows-x64
+          path: |
+            release/artifacts/HS.Tech-Bridge-Setup-x64.exe
+            release/artifacts/HS.Tech-Bridge-Setup-x64.exe.sha256
+            release/validation/windows-release-*.log
+          if-no-files-found: warn
+          retention-days: 14

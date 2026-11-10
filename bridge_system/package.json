@@ -1,32 +1,7 @@
 {
-  "name": "hs-art-tech-bridge",
+  "name": "hs-tech-bridge-system-legacy",
   "version": "2.4.0",
-  "description": "HS.Tech Video Bridge (Hesa Art Tech) - High-performance AI NLE connector for CapCut Desktop, Adobe Premiere Pro, and DaVinci Resolve with MCP protocol and desktop daemon.",
-  "main": "electron_main.js",
-  "author": "Hesaar Studio / Hesa Art Tech",
+  "private": true,
   "license": "MIT",
-  "scripts": {
-    "start": "electron electron_main.js",
-    "server": "python3 bridge_server.py",
-    "mcp": "python3 bridge_server.py --mcp",
-    "build:win": "electron-builder --win nsis",
-    "build:mac": "electron-builder --mac dmg",
-    "build:linux": "electron-builder --linux AppImage"
-  },
-  "dependencies": {
-    "electron": "^33.0.0"
-  },
-  "devDependencies": {
-    "electron-builder": "^25.0.0"
-  },
-  "build": {
-    "appId": "com.hesaart.videobridge",
-    "productName": "HS.Tech Video Bridge",
-    "directories": {
-      "output": "dist"
-    },
-    "win": {
-      "target": ["nsis"]
-    }
-  }
+  "description": "Deprecated prototype metadata only. The supported desktop application uses the repository-root package.json; this nested package is not built or shipped."
 }

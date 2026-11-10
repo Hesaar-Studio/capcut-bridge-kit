@@ -24,11 +24,11 @@ def safe_draft_name(name: str) -> str:
     """
     if (
         not isinstance(name, str)
-        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _.-]{0,79}", name)
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _().-]{0,79}", name)
         or name in {".", ".."}
     ):
         raise ValueError(
-            "Draft name must be a simple folder name (letters, numbers, spaces, dot, _ or -)"
+            "Draft name must be a simple folder name (letters, numbers, spaces, parentheses, dot, _ or -)"
         )
     return name
 

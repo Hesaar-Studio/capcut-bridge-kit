@@ -241,7 +241,7 @@ export const EditingMastery: React.FC<EditingMasteryProps> = ({ platform, onNavi
                     <div>python capcut-bridge-win.py ls</div>
                   </div>
                   <p className="text-xs text-slate-400">
-                    همچنین می‌توانید از فایل <span className="text-teal-400 font-mono">install-plugin-win.bat</span> در تب Windows Plugin استفاده کنید تا تمام مراحل فوق با یک دابل‌کلیک اجرا شوند.
+                    اسکریپت قدیمی <span className="text-teal-400 font-mono">install-plugin-win.bat</span> غیرفعال است و دیگر تغییری در سیستم ایجاد نمی‌کند؛ این پروژه هنوز فایل Setup.exe آزموده‌شده ندارد.
                   </p>
                 </div>
               ) : (

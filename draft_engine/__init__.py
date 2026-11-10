@@ -33,6 +33,7 @@ from .backup import (
 from .writer import (
     write_draft_project,
     write_raw_draft_json_atomic,
+    update_existing_draft_json,
 )
 
 __all__ = [
@@ -55,4 +56,5 @@ __all__ = [
     "restore_draft_backup",
     "write_draft_project",
     "write_raw_draft_json_atomic",
+    "update_existing_draft_json",
 ]

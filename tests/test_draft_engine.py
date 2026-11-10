@@ -37,6 +37,7 @@ from draft_engine.validator import (
     validate_draft_structure,
 )
 from draft_engine.writer import (
+    acquire_draft_write_lock,
     write_draft_project,
     write_raw_draft_json_atomic,
 )
@@ -264,6 +265,56 @@ class DraftEngineReaderWriterTest(unittest.TestCase):
             # Verify target has updated duration
             draft_proj2 = read_draft_project(target_dir)
             self.assertEqual(draft_proj2.duration, 6_000_000)
+
+    def test_update_preserves_cache_sidecars_and_reports_json_only_verification(self):
+        with tempfile.TemporaryDirectory() as temp:
+            projects_dir = Path(temp)
+            content = {
+                "id": "PRESERVE1",
+                "duration": 1_000_000,
+                "materials": {"videos": [{"id": "v1", "path": "missing.mp4"}]},
+                "tracks": [{"type": "video", "segments": [{
+                    "id": "s1", "material_id": "v1",
+                    "target_timerange": {"start": 0, "duration": 1_000_000},
+                    "source_timerange": {"start": 0, "duration": 1_000_000},
+                }]}],
+            }
+            created = write_raw_draft_json_atomic(projects_dir, "PreserveMe", content)
+            target = Path(created["target_dir"])
+            timelines = target / "Timelines"
+            timelines.mkdir()
+            (timelines / "cache.bin").write_bytes(b"native-cache")
+            (target / "sidecar.json").write_text("keep me", encoding="utf-8")
+
+            updated = json.loads((target / "draft_content.json").read_text(encoding="utf-8"))
+            updated["duration"] = 2_000_000
+            result = write_raw_draft_json_atomic(
+                projects_dir, "PreserveMe", updated, overwrite=True, confirm_name="PreserveMe"
+            )
+
+            self.assertTrue(result["verified"])
+            self.assertFalse(result["capcut_verified"])
+            self.assertEqual(result["verification_scope"], "draft_json_disk_readback_only")
+            self.assertTrue((target / "Timelines" / "cache.bin").is_file())
+            self.assertEqual((target / "Timelines" / "cache.bin").read_bytes(), b"native-cache")
+            self.assertEqual((target / "sidecar.json").read_text(encoding="utf-8"), "keep me")
+            backup = Path(result["backup_dir"])
+            self.assertEqual(json.loads((backup / "draft_content.json").read_text(encoding="utf-8"))["duration"], 1_000_000)
+            self.assertTrue((backup / "Timelines" / "cache.bin").is_file())
+
+    def test_writer_lock_rejects_concurrent_project_write(self):
+        with tempfile.TemporaryDirectory() as temp:
+            projects_dir = Path(temp)
+            release = acquire_draft_write_lock(projects_dir, "LockedDraft")
+            try:
+                with self.assertRaisesRegex(RuntimeError, "already in progress"):
+                    write_raw_draft_json_atomic(
+                        projects_dir,
+                        "LockedDraft",
+                        {"materials": {}, "tracks": []},
+                    )
+            finally:
+                release()
 
 
 if __name__ == "__main__":

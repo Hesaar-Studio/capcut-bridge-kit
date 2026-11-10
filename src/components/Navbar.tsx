@@ -1,5 +1,5 @@
 import React from 'react';
-import { Terminal, Download, FileCode, Sliders, ShieldCheck, Film, Sparkles, BookOpen, Cpu, Video } from 'lucide-react';
+import { Terminal, Download, FileCode, Sliders, ShieldCheck, Film, Sparkles, BookOpen, Cpu, Video, Workflow } from 'lucide-react';
 import { Platform } from '../types';
 
 interface NavbarProps {
@@ -20,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navItems = [
     { id: 'ai_hub', label: 'تولید هوش مصنوعی و ابر (AI Hub)', icon: Video },
     { id: 'bridge', label: 'پل ارتباطی HS.Tech (MCP & .EXE)', icon: Cpu },
+    { id: 'agent', label: 'Editing Agent · Plan', icon: Workflow },
     { id: 'studio', label: 'CapCut Studio AI', icon: Film },
     { id: 'prompts', label: 'کتابخانه پرامپت ادیت', icon: Sparkles },
     { id: 'mastery', label: 'اسکیل‌ها و راهنما', icon: BookOpen },

@@ -9,11 +9,13 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from ai_contract.capabilities import CapabilityStatus, build_capability_registry
 from ai_contract.dispatcher import ContractDispatcher, dispatch_contract_request
 from ai_contract.receipt import ExecutionReceipt, ExecutionStatus, ReceiptStore
 from ai_contract.schemas import ContractRequest, ContractResponse, validate_contract_request
+from draft_engine.reader import read_raw_draft_json
 from draft_engine.models import (
     AudioMaterial,
     DraftProject,
@@ -72,7 +74,13 @@ class TestCapabilityRegistry(unittest.TestCase):
 
     def test_tool_status_distinction(self):
         reg = build_capability_registry()
-        # Read-only tools must be AVAILABLE
+        # Read-only discovery/inspection tools must be AVAILABLE
+        list_tool = reg.get_tool("list_projects")
+        self.assertIsNotNone(list_tool)
+        self.assertEqual(list_tool.status, CapabilityStatus.AVAILABLE)
+        self.assertTrue(list_tool.read_only)
+        self.assertFalse(list_tool.mutating)
+
         inspect_tool = reg.get_tool("inspect_project")
         self.assertIsNotNone(inspect_tool)
         self.assertEqual(inspect_tool.status, CapabilityStatus.AVAILABLE)
@@ -162,6 +170,65 @@ class TestContractDispatcher(unittest.TestCase):
         self.assertIn("tools", res.data)
         self.assertIn("protocol_version", res.data)
 
+    def test_list_projects_returns_safe_metadata_and_handles_bad_drafts(self):
+        hidden = self.projects_dir / ".staging-hidden"
+        hidden.mkdir()
+        (hidden / "draft_content.json").write_text("{}", encoding="utf-8")
+        unsafe = self.projects_dir / "bad$name"
+        unsafe.mkdir()
+        (unsafe / "draft_content.json").write_text("{}", encoding="utf-8")
+        broken = self.projects_dir / "BrokenDraft"
+        broken.mkdir()
+        (broken / "draft_content.json").write_text("{not json", encoding="utf-8")
+        unreadable = self.projects_dir / "UnreadableDraft"
+        unreadable.mkdir()
+        (unreadable / "draft_content.json").write_text("{}", encoding="utf-8")
+        linked = self.projects_dir / "LinkedDraft"
+        try:
+            linked.symlink_to(self.project_path, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            linked = None
+
+        original_bytes = (self.project_path / "draft_content.json").read_bytes()
+        real_reader = read_raw_draft_json
+
+        def read_with_permission_error(draft_dir):
+            if Path(draft_dir).name == "UnreadableDraft":
+                raise PermissionError("fixture permission error")
+            return real_reader(draft_dir)
+
+        with patch("ai_contract.dispatcher.get_capcut_projects_dir", return_value=self.projects_dir), \
+             patch("ai_contract.dispatcher.read_raw_draft_json", side_effect=read_with_permission_error):
+            response = self.dispatcher.dispatch(ContractRequest(operation="list_projects"))
+
+        self.assertTrue(response.success)
+        self.assertEqual(response.data["count"], len(response.data["projects"]))
+        self.assertEqual([project["name"] for project in response.data["projects"]], ["BrokenDraft", "MyReel", "UnreadableDraft"])
+        self.assertEqual(response.data["source"], "local-draft-json-index")
+        self.assertNotIn("path", response.data["projects"][1])
+        my_reel = response.data["projects"][1]
+        self.assertEqual(my_reel["duration_seconds"], 15.0)
+        self.assertEqual(my_reel["video_count"], 1)
+        self.assertEqual(my_reel["audio_count"], 0)
+        self.assertEqual(my_reel["timeline_count"], 2)
+        self.assertEqual(my_reel["clip_count"], 4)
+        self.assertFalse(my_reel["read_error"])
+        self.assertTrue(response.data["projects"][0]["read_error"])
+        self.assertIsNone(response.data["projects"][0]["duration_seconds"])
+        self.assertTrue(response.data["projects"][2]["read_error"])
+        self.assertEqual((self.project_path / "draft_content.json").read_bytes(), original_bytes)
+        if linked is not None:
+            self.assertTrue(linked.is_symlink())
+
+    def test_list_projects_rejects_custom_filesystem_roots(self):
+        response = self.dispatcher.dispatch(ContractRequest(
+            operation="list_projects",
+            parameters={"projects_dir": str(self.projects_dir)},
+        ))
+        self.assertFalse(response.success)
+        self.assertEqual(response.error["code"], "VALIDATION_ERROR")
+        self.assertIn("current account's CapCut projects directory only", response.error["message"])
+
     def test_inspect_project_routing(self):
         req = ContractRequest(
             operation="inspect_project",
@@ -239,7 +306,7 @@ class TestContractDispatcher(unittest.TestCase):
         # 2. Validate plan
         req_val = ContractRequest(
             operation="validate_edit_plan",
-            parameters={"project_name": "MyReel", "plan": plan_dict},
+            parameters={"project_name": "MyReel", "projects_dir": str(self.projects_dir), "plan": plan_dict},
         )
         res_val = self.dispatcher.dispatch(req_val)
         self.assertTrue(res_val.success)
@@ -255,6 +322,29 @@ class TestContractDispatcher(unittest.TestCase):
         self.assertEqual(res_prev.data["current_duration_sec"], 15.0)
         self.assertLess(res_prev.data["projected_duration_sec"], 15.0)
         self.assertEqual(res_prev.data["net_time_saved_sec"], 4.0)
+
+    def test_plan_validation_checks_project_and_segment_readback(self):
+        generated = self.dispatcher.dispatch(ContractRequest(
+            operation="create_edit_plan",
+            parameters={"project_name": "MyReel", "projects_dir": str(self.projects_dir)},
+        ))
+        self.assertTrue(generated.success)
+        plan = generated.data
+        self.assertTrue(plan["items"])
+        plan["items"][0]["target_segment_ids"] = ["not-a-real-segment"]
+        validated = self.dispatcher.dispatch(ContractRequest(
+            operation="validate_edit_plan",
+            parameters={"project_name": "MyReel", "projects_dir": str(self.projects_dir), "plan": plan},
+        ))
+        self.assertTrue(validated.success)
+        self.assertFalse(validated.data["is_valid"])
+        self.assertTrue(any("unknown segment" in error for error in validated.data["errors"]))
+        preview = self.dispatcher.dispatch(ContractRequest(
+            operation="preview_edit_plan",
+            parameters={"project_name": "MyReel", "projects_dir": str(self.projects_dir), "plan": plan},
+        ))
+        self.assertFalse(preview.success)
+        self.assertEqual(preview.error["code"], "INVALID_PLAN")
 
     def test_unsupported_mutating_operation_rejection(self):
         """Crucial test: execute_edit_plan must be rejected with UNSUPPORTED_OPERATION, zero fake success."""

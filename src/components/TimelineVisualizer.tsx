@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, Scissors, ZoomIn, ZoomOut, Check, ShieldCheck, Film, Type, Layers, Code, AlertTriangle } from 'lucide-react';
+import { Scissors, Film, Type, Layers, Code, AlertTriangle } from 'lucide-react';
 
 interface Clip {
   id: string;
@@ -10,12 +10,10 @@ interface Clip {
 }
 
 export const TimelineVisualizer: React.FC = () => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playhead, setPlayhead] = useState(2.8); // current playhead position in seconds
-  const [zoom, setZoom] = useState(1);
+  const [playhead, setPlayhead] = useState(2.8); // in-memory demo position in seconds
   const [activeTab, setActiveTab] = useState<'visual' | 'json'>('visual');
 
-  // Multi-track state simulating CapCut draft_content.json
+  // Synthetic in-memory sample data; not connected to draft_content.json
   const [mainClips, setMainClips] = useState<Clip[]>([
     { id: 'c1', name: 'intro_hook.mov', start: 0, duration: 2.4, color: 'bg-blue-600/80 border-blue-500' },
     { id: 'c2', name: 'demo_problem.mov', start: 2.4, duration: 3.6, color: 'bg-blue-700/80 border-blue-600' },
@@ -30,7 +28,7 @@ export const TimelineVisualizer: React.FC = () => {
   const [textClips, setTextClips] = useState<Clip[]>([
     { id: 't1', name: 'STOP SCROLLING 🚨', start: 0.2, duration: 2.2, color: 'bg-amber-600/80 border-amber-500' },
     { id: 't2', name: 'Stop editing manually', start: 2.6, duration: 3.2, color: 'bg-amber-700/80 border-amber-600' },
-    { id: 't3', name: 'CapCut Bridge Active', start: 6.2, duration: 3.5, color: 'bg-amber-600/80 border-amber-500' },
+    { id: 't3', name: 'Sample subtitle', start: 6.2, duration: 3.5, color: 'bg-amber-600/80 border-amber-500' },
   ]);
 
   const totalDuration = 13.0; // seconds
@@ -126,9 +124,9 @@ export const TimelineVisualizer: React.FC = () => {
       {/* Header and Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800 pb-4">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-white">Draft & Timeline Inspector</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-white">Sample Timeline Preview</h2>
           <p className="text-xs text-neutral-400 mt-1">
-            Simulate CapCut’s multi-track timeline, test live frame-exact seeks, cuts, and inspect underlying draft JSON.
+            All clips, timestamps, split edits, and JSON below are synthetic in-memory demo data—not loaded from or written to CapCut.
           </p>
         </div>
 
@@ -139,7 +137,7 @@ export const TimelineVisualizer: React.FC = () => {
               activeTab === 'visual' ? 'bg-neutral-800 text-white shadow-sm' : 'text-neutral-400 hover:text-white'
             }`}
           >
-            Visual Timeline
+            Sample Timeline
           </button>
           <button
             onClick={() => setActiveTab('json')}
@@ -148,9 +146,14 @@ export const TimelineVisualizer: React.FC = () => {
             }`}
           >
             <Code className="w-3.5 h-3.5" />
-            <span>draft_content.json</span>
+            <span>Synthetic JSON sample</span>
           </button>
         </div>
+      </div>
+
+      <div className="flex items-start gap-2 rounded-lg border border-amber-700/60 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+        <span>DEMO ONLY · Split, scrub, and JSON controls update browser state only; no CapCut command is sent and no project file is read.</span>
       </div>
 
       {activeTab === 'visual' ? (
@@ -163,7 +166,7 @@ export const TimelineVisualizer: React.FC = () => {
                 {formatTimecode(playhead)}
               </div>
               <div className="text-xs font-mono text-neutral-400 hidden sm:block">
-                <span>CapCut Units: </span>
+                <span>Sample µs: </span>
                 <span className="text-neutral-200">{formatMicroseconds(playhead)}</span>
               </div>
             </div>
@@ -175,21 +178,21 @@ export const TimelineVisualizer: React.FC = () => {
                 className="px-3 py-1.5 text-xs font-medium bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg border border-neutral-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
                 <Scissors className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Split Cut (Cmd+B)</span>
+                <span>Split sample clip (local only)</span>
               </button>
               <button
                 onClick={() => setPlayhead(0)}
                 className="px-2.5 py-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-950 border border-neutral-800 rounded-lg transition-colors cursor-pointer"
               >
-                Reset
+                Reset preview
               </button>
             </div>
 
             {/* Zoom / Info */}
             <div className="flex items-center gap-3 text-xs text-neutral-400">
-              <div className="flex items-center gap-1.5 text-emerald-400">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Timeranges Repaired</span>
+              <div className="flex items-center gap-1.5 text-amber-300">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Sample ranges only · not CapCut-validated</span>
               </div>
               <span className="text-neutral-600">·</span>
               <span>Total: {totalDuration.toFixed(1)}s</span>
@@ -299,7 +302,7 @@ export const TimelineVisualizer: React.FC = () => {
               />
               <div className="flex justify-between text-[11px] font-mono text-neutral-400 mt-1">
                 <span>0.00s</span>
-                <span>Scrub Playhead (Seek Simulation)</span>
+                <span>Sample playhead · in-memory only</span>
                 <span>{totalDuration}s</span>
               </div>
             </div>
@@ -310,9 +313,9 @@ export const TimelineVisualizer: React.FC = () => {
         <div className="p-4 bg-neutral-950 border border-neutral-800 rounded-xl space-y-3">
           <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
             <span className="text-xs font-mono text-neutral-400">
-              ~/Movies/CapCut/User Data/Projects/com.lveditor.draft/Hook_Promo_V1/draft_content.json
+              In-memory sample · not read from or written to a project path
             </span>
-            <span className="text-xs text-emerald-400 font-mono">Strict CapCut Schema V2</span>
+            <span className="text-xs text-amber-300 font-mono">Schema compatibility not verified</span>
           </div>
           <pre className="font-mono text-xs text-neutral-300 bg-neutral-900 p-4 rounded-lg overflow-x-auto max-h-96 leading-relaxed">
             {JSON.stringify(draftJson, null, 2)}

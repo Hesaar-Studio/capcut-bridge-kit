@@ -108,6 +108,8 @@ def validate_draft_structure(
                     res.add_warning(f"Video material {m_id} has no path")
                 else:
                     p = Path(path_str)
+                    if not p.is_absolute() and base_dir is not None:
+                        p = Path(base_dir) / p
                     if not p.is_file():
                         res.add_warning(f"Referenced media file does not exist on disk: {p}")
 

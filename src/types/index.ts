@@ -9,6 +9,9 @@ export interface CommandDefinition {
   usage: string;
   example: string;
   hardRuleRef?: string;
+  supportStatus: 'READ_ONLY' | 'JSON_WRITE' | 'LIVE_UNVERIFIED' | 'ARTIFACT_READBACK' | 'PARTIAL' | 'UNSUPPORTED';
+  supportedPlatforms: Platform[];
+  supportNote: string;
   args: CommandArg[];
 }
 
